@@ -1,0 +1,6 @@
+{
+  "name": "JEE Graphing Calculator",
+  "description": "Offline-first application with scalable modular architecture supporting future integrations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

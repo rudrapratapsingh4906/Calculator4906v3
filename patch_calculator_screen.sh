@@ -1,0 +1,2 @@
+sed -i 's/fun CalculatorScreen(/fun CalculatorScreen(\n    onNavigateToAgeCalculator: () -> Unit = {},/' feature/src/main/java/com/example/feature/calculator/ui/CalculatorScreen.kt
+sed -i '/text = { Text("Theme Customization") }/a \                        )\n                        DropdownMenuItem(\n                            text = { Text("Age Calculator") },\n                            onClick = { showMenu = false; onNavigateToAgeCalculator() }' feature/src/main/java/com/example/feature/calculator/ui/CalculatorScreen.kt

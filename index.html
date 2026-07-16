@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Calculator 4906 - Premium Edition</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Material Symbols for beautiful modern icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="m3-dark-theme">
+    <div class="calculator-app">
+        <!-- Top Toolbar / Header -->
+        <header class="app-header">
+            <span class="app-title">My Calculator 4906</span>
+            <div class="header-actions">
+                <button id="toggle-history-btn" class="icon-btn" title="View History">
+                    <span class="material-symbols-outlined">history</span>
+                </button>
+                <button id="toggle-settings-btn" class="icon-btn" title="Settings & Themes">
+                    <span class="material-symbols-outlined">palette</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Display Container -->
+        <div class="display-container">
+            <div class="status-bar">
+                <span id="angle-mode-indicator" class="badge">DEG</span>
+                <span id="memory-indicator" class="badge hidden">M</span>
+                <span id="error-message" class="error-text"></span>
+            </div>
+            <div class="expression-wrapper">
+                <div id="calculator-expression" class="scrollable-content" dir="ltr" tabindex="0"></div>
+            </div>
+            <div id="live-result" class="live-result-text"></div>
+            <div id="calculator-result" class="result-text">0</div>
+        </div>
+
+        <!-- History Sidebar / Pane -->
+        <div id="history-pane" class="history-pane hidden">
+            <div class="history-header">
+                <h3>Calculation History</h3>
+                <div class="history-header-actions">
+                    <button id="clear-all-history" class="text-btn">Clear All</button>
+                    <button id="close-history" class="icon-btn">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+            </div>
+            <div class="history-search-bar">
+                <span class="material-symbols-outlined search-icon">search</span>
+                <input type="text" id="history-search" placeholder="Search history...">
+            </div>
+            <div id="history-list" class="history-list">
+                <!-- Dynamic calculation items loaded here -->
+                <div class="empty-history">No calculations found</div>
+            </div>
+        </div>
+
+        <!-- Themes & Settings Pane -->
+        <div id="settings-pane" class="settings-pane hidden">
+            <div class="settings-header">
+                <h3>Settings & Themes</h3>
+                <button id="close-settings" class="icon-btn">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="settings-content">
+                <div class="settings-section">
+                    <h4>Vibration Feedback</h4>
+                    <label class="switch">
+                        <input type="checkbox" id="vibration-toggle" checked>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="settings-section">
+                    <h4>Theme Gallery</h4>
+                    <div class="theme-grid">
+                        <div class="theme-card active" data-theme="m3-dark-theme">
+                            <div class="theme-preview dark-preview"></div>
+                            <span>M3 Dark Slate</span>
+                        </div>
+                        <div class="theme-card" data-theme="m3-light-theme">
+                            <div class="theme-preview light-preview"></div>
+                            <span>M3 Light Slate</span>
+                        </div>
+                        <div class="theme-card" data-theme="ocean-breeze">
+                            <div class="theme-preview ocean-preview"></div>
+                            <span>Ocean Breeze</span>
+                        </div>
+                        <div class="theme-card" data-theme="forest-canopy">
+                            <div class="theme-preview forest-preview"></div>
+                            <span>Forest Canopy</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Keyboard and Scientific Section -->
+        <div class="keypad-container">
+            <!-- Expandable Scientific Functions Control (Portrait Only) -->
+            <button id="expand-scientific-btn" class="expand-btn">
+                <span class="material-symbols-outlined expand-icon">keyboard_arrow_up</span>
+                <span>Scientific Functions</span>
+            </button>
+
+            <!-- Scientific Panel (Sleek layout) -->
+            <div id="scientific-panel" class="scientific-panel collapsed">
+                <div class="sci-categories">
+                    <button class="sci-category-tab active" data-category="trig">Trig</button>
+                    <button class="sci-category-tab" data-category="inv-trig">Inv Trig</button>
+                    <button class="sci-category-tab" data-category="hyper">Hyperbolic</button>
+                    <button class="sci-category-tab" data-category="power">Powers & Roots</button>
+                    <button class="sci-category-tab" data-category="log">Logarithmic</button>
+                    <button class="sci-category-tab" data-category="comb">Combinatorics</button>
+                    <button class="sci-category-tab" data-category="const">Constants</button>
+                </div>
+
+                <!-- Info Tooltip Bar -->
+                <div class="tooltip-bar">
+                    <span class="material-symbols-outlined info-icon">info</span>
+                    <span id="tooltip-text">Trigonometry: Calculates sine, cosine, and tangent. Toggle DEG/RAD mode.</span>
+                </div>
+
+                <!-- Category Content -->
+                <div class="sci-keys-grid">
+                    <!-- Dynamic categories injected or filtered here -->
+                    <div class="sci-category-content active" id-cat="trig">
+                        <button class="sci-btn" data-input="sin(" data-desc="sin(x): Sine of angle x in DEG or RAD">sin<span class="sub">sine</span></button>
+                        <button class="sci-btn" data-input="cos(" data-desc="cos(x): Cosine of angle x in DEG or RAD">cos<span class="sub">cosine</span></button>
+                        <button class="sci-btn" data-input="tan(" data-desc="tan(x): Tangent of angle x in DEG or RAD">tan<span class="sub">tangent</span></button>
+                        <button class="sci-btn accent" id="toggle-deg-rad" data-desc="Toggle between Degrees (DEG) and Radians (RAD)">DEG<span class="sub">angle mode</span></button>
+                    </div>
+                    <div class="sci-category-content" id-cat="inv-trig">
+                        <button class="sci-btn" data-input="asin(" data-desc="sin⁻¹(x): Arcsine. Returns angle in DEG or RAD">sin⁻¹<span class="sub">arcsine</span></button>
+                        <button class="sci-btn" data-input="acos(" data-desc="cos⁻¹(x): Arccosine. Returns angle in DEG or RAD">cos⁻¹<span class="sub">arccosine</span></button>
+                        <button class="sci-btn" data-input="atan(" data-desc="tan⁻¹(x): Arctangent. Returns angle in DEG or RAD">tan⁻¹<span class="sub">arctangent</span></button>
+                    </div>
+                    <div class="sci-category-content" id-cat="hyper">
+                        <button class="sci-btn" data-input="sinh(" data-desc="sinh(x): Hyperbolic sine of x">sinh<span class="sub">sine h</span></button>
+                        <button class="sci-btn" data-input="cosh(" data-desc="cosh(x): Hyperbolic cosine of x">cosh<span class="sub">cosine h</span></button>
+                        <button class="sci-btn" data-input="tanh(" data-desc="tanh(x): Hyperbolic tangent of x">tanh<span class="sub">tangent h</span></button>
+                    </div>
+                    <div class="sci-category-content" id-cat="power">
+                        <button class="sci-btn" data-input="^2" data-desc="x²: Raises x to the power of 2">x²<span class="sub">square</span></button>
+                        <button class="sci-btn" data-input="^3" data-desc="x³: Raises x to the power of 3">x³<span class="sub">cube</span></button>
+                        <button class="sci-btn" data-input="^" data-desc="xʸ: Raises base x to exponent y">xʸ<span class="sub">power</span></button>
+                        <button class="sci-btn" data-input="√(" data-desc="√(x): Calculates the square root of x">√<span class="sub">sqrt</span></button>
+                        <button class="sci-btn" data-input="cbrt(" data-desc="³√(x): Calculates the cube root of x">³√<span class="sub">cbrt</span></button>
+                        <button class="sci-btn" data-input="1/(" data-desc="1/x: Calculates the reciprocal of a number">1/x<span class="sub">reciprocal</span></button>
+                    </div>
+                    <div class="sci-category-content" id-cat="log">
+                        <button class="sci-btn" data-input="log(" data-desc="log(x): Base-10 common logarithm">log₁₀<span class="sub">log</span></button>
+                        <button class="sci-btn" data-input="ln(" data-desc="ln(x): Base-e natural logarithm">ln<span class="sub">ln</span></button>
+                        <button class="sci-btn" data-input="exp(" data-desc="eˣ: Exponential function (Euler's number e raised to x)">eˣ<span class="sub">exp</span></button>
+                        <button class="sci-btn" data-input="10^(" data-desc="10ˣ: Calculates 10 raised to the power of x">10ˣ<span class="sub">10^x</span></button>
+                        <button class="sci-btn" data-input="*10^(" data-desc="EXP: Scientific notation multiplier *10^(">EXP<span class="sub">sci exp</span></button>
+                    </div>
+                    <div class="sci-category-content" id-cat="comb">
+                        <button class="sci-btn" data-input="p" data-desc="nPr: Permutations of n items taken r at a time">nPr<span class="sub">permut</span></button>
+                        <button class="sci-btn" data-input="c" data-desc="nCr: Combinations of n items taken r at a time">nCr<span class="sub">combin</span></button>
+                        <button class="sci-btn" data-input="mod" data-desc="MOD: Modulo remainder division (e.g. 10 mod 3 = 1)">MOD<span class="sub">modulo</span></button>
+                        <button class="sci-btn" data-input="abs(" data-desc="abs(x): Calculates absolute value of x">ABS<span class="sub">absolute</span></button>
+                        <button class="sci-btn" data-input="!" data-desc="n!: Factorial of a non-negative integer n">!<span class="sub">fact</span></button>
+                        <button class="sci-btn" data-input="rand" data-desc="Rand: Generates a random decimal between 0 and 1">Rand<span class="sub">random</span></button>
+                    </div>
+                    <div class="sci-category-content" id-cat="const">
+                        <button class="sci-btn" data-input="π" data-desc="π: Standard mathematical ratio Pi (~3.14159)">π<span class="sub">pi</span></button>
+                        <button class="sci-btn" data-input="e" data-desc="e: Euler's number constant (~2.71828)">e<span class="sub">euler</span></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Memory Control Buttons (M+, M-, MR, MC) -->
+            <div class="memory-bar">
+                <button class="mem-btn" id="mem-clear">MC</button>
+                <button class="mem-btn" id="mem-recall">MR</button>
+                <button class="mem-btn" id="mem-add">M+</button>
+                <button class="mem-btn" id="mem-subtract">M-</button>
+            </div>
+
+            <!-- Standard Base Keypad -->
+            <div class="standard-grid">
+                <button class="key action-btn" data-input="clear">AC</button>
+                <button class="key action-btn" data-input="delete">DEL</button>
+                <button class="key action-btn" data-input="(">(</button>
+                <button class="key action-btn" data-input=")">)</button>
+
+                <button class="key num-btn" data-input="7">7</button>
+                <button class="key num-btn" data-input="8">8</button>
+                <button class="key num-btn" data-input="9">9</button>
+                <button class="key op-btn" data-input="÷">÷</button>
+
+                <button class="key num-btn" data-input="4">4</button>
+                <button class="key num-btn" data-input="5">5</button>
+                <button class="key num-btn" data-input="6">6</button>
+                <button class="key op-btn" data-input="×">×</button>
+
+                <button class="key num-btn" data-input="1">1</button>
+                <button class="key num-btn" data-input="2">2</button>
+                <button class="key num-btn" data-input="3">3</button>
+                <button class="key op-btn" data-input="-">-</button>
+
+                <button class="key num-btn" data-input="±">±</button>
+                <button class="key num-btn" data-input="0">0</button>
+                <button class="key num-btn" data-input=".">.</button>
+                <button class="key op-btn" data-input="+">+</button>
+
+                <button class="key equals-btn" id="equals-key" data-input="=">=</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

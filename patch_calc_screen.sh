@@ -1,0 +1,2 @@
+sed -i 's/onNavigateToAgeCalculator: () -> Unit = {}/onNavigateToAgeCalculator: () -> Unit = {},\n    onNavigateToUnitConverter: () -> Unit = {}/' feature/src/main/java/com/example/feature/calculator/ui/CalculatorScreen.kt
+sed -i '/text = { Text("Age Calculator") }/a \                        )\n                        DropdownMenuItem(\n                            text = { Text("Unit Converter") },\n                            onClick = { showMenu = false; onNavigateToUnitConverter() }' feature/src/main/java/com/example/feature/calculator/ui/CalculatorScreen.kt
