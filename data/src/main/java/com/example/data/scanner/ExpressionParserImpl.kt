@@ -1,7 +1,14 @@
 package com.example.data.scanner
 
 import com.example.domain.scanner.ExpressionParser
+import com.example.domain.scanner.TextUnderstandingEngine
+import com.example.domain.scanner.MathIntent
+import com.example.domain.scanner.StepByStepSolver
 import com.example.domain.math.CalculatorEngine
+import com.example.domain.scanner.MathKnowledgeBase
+import com.example.domain.scanner.MultiStepReasoningEngine
+import com.example.domain.scanner.AITutorEngine
+import com.example.domain.scanner.AITutorMode
 import com.example.core.util.Result
 
 class ExpressionParserImpl(
@@ -9,47 +16,79 @@ class ExpressionParserImpl(
 ) : ExpressionParser {
     override fun parse(expression: String): String {
         return try {
-            if (expression.contains("=")) {
-                solveEquation(expression)
-            } else {
-                evaluateExpression(expression)
+            val understanding = TextUnderstandingEngine.process(expression)
+            val conceptInfo = MathKnowledgeBase.classify(understanding.expression, understanding.category)
+            
+            if (understanding.intent == MathIntent.TUTOR) {
+                val mode = when (understanding.extractedCommand) {
+                    "hint" -> AITutorMode.HINT
+                    "next_step" -> AITutorMode.NEXT_STEP
+                    "formula" -> AITutorMode.FORMULA_FIRST
+                    "theorem" -> AITutorMode.THEOREM_EXPLANATION
+                    "mistake" -> AITutorMode.MISTAKE_DETECTION
+                    else -> AITutorMode.FULL_SOLUTION
+                }
+                return AITutorEngine.generateTutorResponse(
+                    understanding.expression,
+                    conceptInfo,
+                    mode,
+                    userSolution = expression // Pass full text as possible user solution
+                )
             }
+
+            if (understanding.intent == MathIntent.PRACTICE) {
+                val chapter = MathKnowledgeBase.findChapter(expression)
+                val topic = MathKnowledgeBase.findTopic(expression)
+                
+                return AITutorEngine.generateTutorResponse(
+                    expression,
+                    conceptInfo.copy(chapter = chapter),
+                    AITutorMode.PRACTICE_SESSION,
+                    userSolution = topic // Abuse userSolution to pass topic for now or just let AITutorEngine handle it
+                )
+            }
+            
+            val reasoningHeader = MultiStepReasoningEngine.generateReasoning(understanding.expression, conceptInfo)
+            
+            val solverResult = when (understanding.intent) {
+                MathIntent.SOLVE -> solveEquation(understanding.expression)
+                MathIntent.EVALUATE -> evaluateExpression(understanding.expression)
+                MathIntent.SIMPLIFY -> StepByStepSolver.simplifySteps(understanding.expression, calculatorEngine)
+                MathIntent.DIFFERENTIATE -> StepByStepSolver.differentiateSteps(understanding.expression, calculatorEngine)
+                MathIntent.INTEGRATE -> StepByStepSolver.integrateSteps(understanding.expression, calculatorEngine)
+                MathIntent.MATRIX -> StepByStepSolver.matrixSteps(understanding.expression)
+                MathIntent.VECTOR -> StepByStepSolver.vectorSteps(understanding.expression)
+                MathIntent.COMPLEX -> StepByStepSolver.complexSteps(understanding.expression)
+                MathIntent.STATISTICS -> StepByStepSolver.statisticsSteps(understanding.expression)
+                MathIntent.GEOMETRY -> StepByStepSolver.geometrySteps(understanding.expression)
+                else -> {
+                    when (understanding.category) {
+                        com.example.domain.scanner.MathCategory.GEOMETRY -> StepByStepSolver.geometrySteps(understanding.expression)
+                        com.example.domain.scanner.MathCategory.MATRIX -> StepByStepSolver.matrixSteps(understanding.expression)
+                        com.example.domain.scanner.MathCategory.COMPLEX -> StepByStepSolver.complexSteps(understanding.expression)
+                        com.example.domain.scanner.MathCategory.STATISTICS -> StepByStepSolver.statisticsSteps(understanding.expression)
+                        else -> {
+                            if (understanding.expression.contains("=")) {
+                                solveEquation(understanding.expression)
+                            } else {
+                                evaluateExpression(understanding.expression)
+                            }
+                        }
+                    }
+                }
+            }
+            
+            reasoningHeader + solverResult
         } catch (e: Exception) {
             "Error: ${e.message}"
         }
     }
 
     private fun evaluateExpression(expression: String): String {
-        val result = calculatorEngine.evaluate(expression, false)
-        return when (result) {
-            is Result.Success -> {
-                "Expression: $expression\n\nFinal Answer: ${result.data}"
-            }
-            is Result.Error -> "Error: Invalid expression"
-        }
+        return StepByStepSolver.evaluateSteps(expression, calculatorEngine)
     }
 
     private fun solveEquation(expression: String): String {
-        // Simple linear equation solver for: ax + b = c -> x = (c - b) / a
-        // Example: 2x + 3 = 11
-        
-        val parts = expression.split("=")
-        if (parts.size != 2) return "Error: Invalid equation"
-        
-        val left = parts[0].trim()
-        val right = parts[1].trim()
-        
-        // This is simplified, just to demonstrate the flow. 
-        // Real implementation would parse the expression tree.
-        
-        return """
-            Original Equation: $expression
-            
-            Step 1: Simplify both sides
-            Step 2: Isolate the variable x
-            Step 3: Solve for x
-            
-            Final Answer: x = ...
-        """.trimIndent()
+        return StepByStepSolver.solveEquationSteps(expression, calculatorEngine)
     }
 }

@@ -30,5 +30,3 @@ gradle.properties
 Calculator4906-v2-release.apk
 *.apk
 .build-outputs/
-GraphPlotterViewModel_before_anr_fix.kt
-codemagic_backup.yaml

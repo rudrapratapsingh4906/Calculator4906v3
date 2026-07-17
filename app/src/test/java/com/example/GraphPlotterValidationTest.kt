@@ -33,11 +33,23 @@ class GraphPlotterValidationTest {
     private val plotGraphUseCase = PlotGraphUseCase(graphRepository, calculatorEngine)
     private val viewModel = GraphPlotterViewModel(plotGraphUseCase, calculatorEngine)
 
+    private fun waitForState(predicate: (com.example.feature.advancedfeatures.ui.GraphState) -> Boolean) {
+        val start = System.currentTimeMillis()
+        while (!predicate(viewModel.state.value)) {
+            if (System.currentTimeMillis() - start > 5000) {
+                throw AssertionError("Timed out waiting for state condition")
+            }
+            Thread.sleep(50)
+            org.robolectric.shadows.ShadowLooper.idleMainLooper(100, java.util.concurrent.TimeUnit.MILLISECONDS)
+        }
+    }
+
     @Test
     fun `test conic circle verification`() {
         // Test plotting a Circle with h=0, k=0, r=5
         viewModel.addConicCircle(0.0, 0.0, 5.0)
         
+        waitForState { it.points.isNotEmpty() && it.points[0].isNotEmpty() }
         val state = viewModel.state.value
         assertEquals(1, state.graphs.size)
         assertTrue(state.graphs[0] is PlottedGraph.ConicCircle)
@@ -73,6 +85,7 @@ class GraphPlotterValidationTest {
         // Test plotting x=cos(t), y=sin(t)
         viewModel.addParametric("cos(t)", "sin(t)")
         
+        waitForState { it.points.isNotEmpty() && it.points[0].isNotEmpty() }
         val state = viewModel.state.value
         assertEquals(1, state.graphs.size)
         assertTrue(state.graphs[0] is PlottedGraph.Parametric)
@@ -97,6 +110,7 @@ class GraphPlotterValidationTest {
         // Test plotting r=sin(theta)
         viewModel.addPolar("sin(theta)")
         
+        waitForState { it.points.isNotEmpty() && it.points[0].isNotEmpty() }
         val state = viewModel.state.value
         assertEquals(1, state.graphs.size)
         assertTrue(state.graphs[0] is PlottedGraph.Polar)
@@ -120,6 +134,7 @@ class GraphPlotterValidationTest {
     fun `test equation recognition and analysis for quadratic`() {
         viewModel.addExpression("x^2-4x+3")
         
+        waitForState { it.equationAnalysis.isNotEmpty() }
         val state = viewModel.state.value
         assertEquals(1, state.graphs.size)
         
@@ -134,6 +149,7 @@ class GraphPlotterValidationTest {
     fun `test equation recognition and analysis for implicit circle`() {
         viewModel.addExpression("x^2+y^2=25")
         
+        waitForState { it.equationAnalysis.isNotEmpty() }
         val state = viewModel.state.value
         assertEquals(1, state.graphs.size)
         assertTrue(state.graphs[0] is PlottedGraph.ConicCircle)
@@ -148,6 +164,7 @@ class GraphPlotterValidationTest {
     fun `test equation recognition and analysis for trigonometric`() {
         viewModel.addExpression("sin(x)+cos(x)")
         
+        waitForState { it.equationAnalysis.isNotEmpty() }
         val state = viewModel.state.value
         assertEquals(1, state.graphs.size)
         

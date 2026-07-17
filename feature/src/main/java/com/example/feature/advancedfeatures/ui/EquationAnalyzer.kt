@@ -39,7 +39,33 @@ class EquationAnalyzer(
 
     fun analyze(input: String): EquationAnalysis {
         val cleanInput = input.replace(" ", "").lowercase()
-        val preprocessedInput = preprocess(input)
+        var preprocessedInput = preprocess(input)
+        if (preprocessedInput.replace(" ", "").lowercase().startsWith("y=")) {
+            preprocessedInput = preprocessedInput.substringAfter("=")
+        }
+
+        if (cleanInput.startsWith("r=")) {
+            val rExpr = input.substringAfter("=").trim()
+            val details = mapOf(
+                "Classification" to "Polar Equation",
+                "Expression" to "r = $rExpr",
+                "Independent Variable" to "theta"
+            )
+            return EquationAnalysis(input, RecognizedEquationType.General, details)
+        }
+
+        if (cleanInput.contains("x=") && cleanInput.contains("y=")) {
+            val parts = input.split(",")
+            val xPart = parts.getOrNull(0)?.substringAfter("=")?.trim() ?: ""
+            val yPart = parts.getOrNull(1)?.substringAfter("=")?.trim() ?: ""
+            val details = mapOf(
+                "Classification" to "Parametric Equation",
+                "X Expression" to "x = $xPart",
+                "Y Expression" to "y = $yPart",
+                "Parameter" to "t"
+            )
+            return EquationAnalysis(input, RecognizedEquationType.General, details)
+        }
 
         // 1. Check for Circle implicit
         if (cleanInput == "x^2+y^2=25" || cleanInput.matches(Regex("x\\^2\\+y\\^2=\\d+"))) {
@@ -118,8 +144,16 @@ class EquationAnalyzer(
 
         // 4. Trigonometric Equations
         if (cleanInput.contains("sin") || cleanInput.contains("cos") || cleanInput.contains("tan")) {
-            val roots = rootFinder.findRoots(preprocessedInput, -10.0, 10.0)
-            val extrema = functionAnalyzer.findExtrema(preprocessedInput, -10.0, 10.0)
+            val roots = try {
+                rootFinder.findRoots(preprocessedInput, -10.0, 10.0)
+            } catch (e: Exception) {
+                emptyList()
+            }
+            val extrema = try {
+                functionAnalyzer.findExtrema(preprocessedInput, -10.0, 10.0)
+            } catch (e: Exception) {
+                emptyList()
+            }
             val details = mapOf(
                 "Classification" to "Trigonometric Expression",
                 "Periodic" to "Yes (Typically 2π)",
@@ -184,8 +218,16 @@ class EquationAnalyzer(
             }
         }
 
-        val roots = rootFinder.findRoots(preprocessedInput, -10.0, 10.0)
-        val extrema = functionAnalyzer.findExtrema(preprocessedInput, -10.0, 10.0)
+        val roots = try {
+            rootFinder.findRoots(preprocessedInput, -10.0, 10.0)
+        } catch (e: Exception) {
+            emptyList()
+        }
+        val extrema = try {
+            functionAnalyzer.findExtrema(preprocessedInput, -10.0, 10.0)
+        } catch (e: Exception) {
+            emptyList()
+        }
         val details = mapOf(
             "Classification" to "General Curve / Function",
             "Roots Count (-10 to 10)" to "${roots.size}",

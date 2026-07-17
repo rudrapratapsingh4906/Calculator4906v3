@@ -7,30 +7,41 @@ import java.util.concurrent.ConcurrentHashMap
 
 sealed interface ExprNode {
     fun eval(variables: Map<String, Double>, isDegreeMode: Boolean): Double
+    fun toSymbolic(): String
 }
 
 class NumberNode(val value: Double) : ExprNode {
     override fun eval(variables: Map<String, Double>, isDegreeMode: Boolean): Double = value
+    override fun toSymbolic(): String = formatNum(value)
 }
 
 class VariableNode(val name: String) : ExprNode {
     override fun eval(variables: Map<String, Double>, isDegreeMode: Boolean): Double = variables[name] ?: 0.0
+    override fun toSymbolic(): String = name
 }
 
 class ConstantNode(val value: Double) : ExprNode {
     override fun eval(variables: Map<String, Double>, isDegreeMode: Boolean): Double = value
+    override fun toSymbolic(): String = when (value) {
+        Math.PI -> "π"
+        Math.E -> "e"
+        else -> formatNum(value)
+    }
 }
 
 class AddNode(val left: ExprNode, val right: ExprNode) : ExprNode {
     override fun eval(variables: Map<String, Double>, isDegreeMode: Boolean): Double = left.eval(variables, isDegreeMode) + right.eval(variables, isDegreeMode)
+    override fun toSymbolic(): String = "(${left.toSymbolic()} + ${right.toSymbolic()})"
 }
 
 class SubNode(val left: ExprNode, val right: ExprNode) : ExprNode {
     override fun eval(variables: Map<String, Double>, isDegreeMode: Boolean): Double = left.eval(variables, isDegreeMode) - right.eval(variables, isDegreeMode)
+    override fun toSymbolic(): String = "(${left.toSymbolic()} - ${right.toSymbolic()})"
 }
 
 class MulNode(val left: ExprNode, val right: ExprNode) : ExprNode {
     override fun eval(variables: Map<String, Double>, isDegreeMode: Boolean): Double = left.eval(variables, isDegreeMode) * right.eval(variables, isDegreeMode)
+    override fun toSymbolic(): String = "${left.toSymbolic()} * ${right.toSymbolic()}"
 }
 
 class DivNode(val left: ExprNode, val right: ExprNode) : ExprNode {
@@ -39,6 +50,7 @@ class DivNode(val left: ExprNode, val right: ExprNode) : ExprNode {
         if (divisor == 0.0) throw ArithmeticException("Divide by zero")
         return left.eval(variables, isDegreeMode) / divisor
     }
+    override fun toSymbolic(): String = "(${left.toSymbolic()}) / (${right.toSymbolic()})"
 }
 
 class ModNode(val left: ExprNode, val right: ExprNode) : ExprNode {
@@ -47,34 +59,42 @@ class ModNode(val left: ExprNode, val right: ExprNode) : ExprNode {
         if (divisor == 0.0) throw ArithmeticException("Divide by zero")
         return left.eval(variables, isDegreeMode) % divisor
     }
+    override fun toSymbolic(): String = "${left.toSymbolic()} mod ${right.toSymbolic()}"
 }
 
 class PowNode(val base: ExprNode, val exponent: ExprNode) : ExprNode {
     override fun eval(variables: Map<String, Double>, isDegreeMode: Boolean): Double = base.eval(variables, isDegreeMode).pow(exponent.eval(variables, isDegreeMode))
+    override fun toSymbolic(): String = "(${base.toSymbolic()})^(${exponent.toSymbolic()})"
 }
 
 class NegNode(val child: ExprNode) : ExprNode {
     override fun eval(variables: Map<String, Double>, isDegreeMode: Boolean): Double = -child.eval(variables, isDegreeMode)
+    override fun toSymbolic(): String = "-(${child.toSymbolic()})"
 }
 
 class FactorialNode(val child: ExprNode) : ExprNode {
     override fun eval(variables: Map<String, Double>, isDegreeMode: Boolean): Double = factorial(child.eval(variables, isDegreeMode))
+    override fun toSymbolic(): String = "(${child.toSymbolic()})!"
 }
 
 class PercentNode(val child: ExprNode) : ExprNode {
     override fun eval(variables: Map<String, Double>, isDegreeMode: Boolean): Double = child.eval(variables, isDegreeMode) / 100.0
+    override fun toSymbolic(): String = "(${child.toSymbolic()})%"
 }
 
 class PermutationNode(val left: ExprNode, val right: ExprNode) : ExprNode {
     override fun eval(variables: Map<String, Double>, isDegreeMode: Boolean): Double = permutation(left.eval(variables, isDegreeMode), right.eval(variables, isDegreeMode))
+    override fun toSymbolic(): String = "${left.toSymbolic()}P${right.toSymbolic()}"
 }
 
 class CombinationNode(val left: ExprNode, val right: ExprNode) : ExprNode {
     override fun eval(variables: Map<String, Double>, isDegreeMode: Boolean): Double = combination(left.eval(variables, isDegreeMode), right.eval(variables, isDegreeMode))
+    override fun toSymbolic(): String = "${left.toSymbolic()}C${right.toSymbolic()}"
 }
 
 class RandNode : ExprNode {
     override fun eval(variables: Map<String, Double>, isDegreeMode: Boolean): Double = Math.random()
+    override fun toSymbolic(): String = "rand()"
 }
 
 class FuncNode(val name: String, val child: ExprNode) : ExprNode {
@@ -102,6 +122,14 @@ class FuncNode(val name: String, val child: ExprNode) : ExprNode {
             else -> throw RuntimeException("Unknown function: $name")
         }
     }
+    override fun toSymbolic(): String = "$name(${child.toSymbolic()})"
+}
+
+private fun formatNum(n: Double): String {
+    if (abs(n - n.roundToLong()) < 1e-9) {
+        return n.roundToLong().toString()
+    }
+    return String.format("%.4f", n).trimEnd('0').trimEnd('.')
 }
 
 private fun factorial(n: Double): Double {
@@ -151,7 +179,7 @@ class CalculatorEngine {
     }
 
     fun parse(str: String): ExprNode {
-        val expr = str.replace(" ", "").lowercase()
+        var expr = str.replace(" ", "").lowercase()
             .replace("−", "-")
             .replace("sin⁻¹", "asin")
             .replace("cos⁻¹", "acos")
@@ -162,6 +190,11 @@ class CalculatorEngine {
             .replace("mod", "#")
             .replace("npr", "p")
             .replace("ncr", "c")
+
+        // Support implicit multiplication (e.g., 4x -> 4*x, )( -> )*(, etc.)
+        expr = expr.replace(Regex("(\\d+|[πe])([a-zA-Z\\(πe])"), "$1*$2")
+        expr = expr.replace(Regex("\\)([a-zA-Z\\(\\dπe])"), ")*$1")
+        expr = expr.replace(Regex("([xyt])\\("), "$1*(")
 
         return parseCache.getOrPut(expr) {
             ASTParser(expr).parse()

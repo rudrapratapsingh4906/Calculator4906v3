@@ -64,6 +64,12 @@ android {
   testOptions { unitTests { isIncludeAndroidResources = true } }
 }
 
+// Ensure .env file exists to prevent secrets plugin from crashing when it's missing
+val envFile = file("${rootDir}/.env")
+if (!envFile.exists()) {
+  envFile.writeText("# Auto-generated placeholders for secrets plugin\n")
+}
+
 // Configure the Secrets Gradle Plugin to use .env and .env.example files
 // to match the convention used in Web projects.
 secrets {

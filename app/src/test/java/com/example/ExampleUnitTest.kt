@@ -90,4 +90,44 @@ class ExampleUnitTest {
     val res14 = engine.evaluate("ln(x)", false, mapOf("x" to -5.0))
     assertTrue(res14 is Result.Error)
   }
+
+  @Test
+  fun testMathOcrCleanup() {
+    // 1. Basic math symbols normalization
+    assertEquals("5 * 3", com.example.domain.scanner.MathOcrCleanup.cleanup("5 × 3"))
+    assertEquals("6 / 2", com.example.domain.scanner.MathOcrCleanup.cleanup("6 ÷ 2"))
+    assertEquals("2+2-1", com.example.domain.scanner.MathOcrCleanup.cleanup("2+2−1"))
+    assertEquals("(x+1)/(y-1)", com.example.domain.scanner.MathOcrCleanup.cleanup("[x+1]/{y-1}"))
+
+    // 2. Multi-line fractions layout detection
+    val fractionText = "3 + 1\n---\n4"
+    assertEquals("(3 + 1)/(4)", com.example.domain.scanner.MathOcrCleanup.cleanup(fractionText))
+
+    // 3. Command prefixes removal
+    val cleaned = com.example.domain.scanner.MathOcrCleanup.cleanup("find x for x^2 - 4 = 0")
+    println("DEBUG: cleaned value is -> $cleaned")
+    assertEquals("2x + 3 = 11", com.example.domain.scanner.MathOcrCleanup.cleanup("Solve: 2x + 3 = 11"))
+    assertEquals("x^2 - 4 = 0", cleaned)
+    assertEquals("15 * 3 + 2", com.example.domain.scanner.MathOcrCleanup.cleanup("Calculate: 15 * 3 + 2"))
+    assertEquals("(x+2) x (x-2)", com.example.domain.scanner.MathOcrCleanup.cleanup("Simplify: (x+2) x (x-2)"))
+
+    // 4. Common OCR letter-to-digit fixes
+    assertEquals("10 + 20", com.example.domain.scanner.MathOcrCleanup.cleanup("1o + 2O"))
+    assertEquals("0.5 + 3.0", com.example.domain.scanner.MathOcrCleanup.cleanup("o.5 + 3.o"))
+    assertEquals("12 + 21 + 1", com.example.domain.scanner.MathOcrCleanup.cleanup("l2 + 2I + |"))
+    assertEquals("50 + 25", com.example.domain.scanner.MathOcrCleanup.cleanup("s0 + 2S"))
+    assertEquals("22 + 32", com.example.domain.scanner.MathOcrCleanup.cleanup("z2 + 3Z"))
+
+    // 5. Symbol and division formats
+    assertEquals("5*3", com.example.domain.scanner.MathOcrCleanup.cleanup("5 x 3"))
+    assertEquals("6/2", com.example.domain.scanner.MathOcrCleanup.cleanup("6:2"))
+
+    // 6. Powers and Exponents
+    assertEquals("x^2", com.example.domain.scanner.MathOcrCleanup.cleanup("x2"))
+    assertEquals("(y+1)^3", com.example.domain.scanner.MathOcrCleanup.cleanup("(y+1)3"))
+
+    // 7. Trailing punctuation removal
+    assertEquals("2+2", com.example.domain.scanner.MathOcrCleanup.cleanup("2+2?"))
+    assertEquals("3*5", com.example.domain.scanner.MathOcrCleanup.cleanup("3*5."))
+  }
 }
