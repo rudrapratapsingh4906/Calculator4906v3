@@ -3,15 +3,18 @@ package com.example
 import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.core.util.DispatcherProvider
@@ -122,7 +125,23 @@ class MainActivity : ComponentActivity() {
             val theme by settingsRepository.themeFlow.collectAsState(initial = "Default")
             val orientationLock by settingsRepository.orientationLockFlow.collectAsState(initial = false)
 
-            var currentScreen by remember { mutableStateOf("calculator") }
+            val ScreenStackSaver = Saver<MutableState<List<String>>, List<String>>(
+                save = { it.value },
+                restore = { mutableStateOf(it) }
+            )
+            val screenStackState = rememberSaveable(saver = ScreenStackSaver) { mutableStateOf(listOf("calculator")) }
+            var screenStack by screenStackState
+            val currentScreen = screenStack.last()
+
+            val navigateTo = { screen: String ->
+                if (screenStack.last() != screen) {
+                    screenStack = screenStack + screen
+                }
+            }
+
+            BackHandler(enabled = screenStack.size > 1) {
+                screenStack = screenStack.dropLast(1)
+            }
 
             LaunchedEffect(orientationLock) {
                 if (orientationLock) {
@@ -136,96 +155,96 @@ class MainActivity : ComponentActivity() {
                 if (currentScreen == "calculator") {
                     CalculatorScreen(
                         viewModel = viewModel,
-                        onNavigateToAgeCalculator = { currentScreen = "age_calculator" },
-                        onNavigateToUnitConverter = { currentScreen = "unit_converter" },
-                        onNavigateToConstants = { currentScreen = "scientific_constants" },
-                        onNavigateToPercentageCgpa = { currentScreen = "percentage_cgpa" },
-                        onNavigateToEmiCalculator = { currentScreen = "emi_calculator" },
-                        onNavigateToHealthCalculator = { currentScreen = "health_calculator" },
-                        onNavigateToCurrencyConverter = { currentScreen = "currency_calculator" },
-                        onNavigateToDateTimeCalculator = { currentScreen = "datetime_calculator" },
-                        onNavigateToMathScanner = { currentScreen = "math_scanner" },
-                        onNavigateToGraphPlotter = { currentScreen = "graph_plotter" },
-                        onNavigateToMatrixCalculator = { currentScreen = "matrix_calculator" },
-                        onNavigateToEquationSolver = { currentScreen = "equation_solver" },
-                        onNavigateToCalculus = { currentScreen = "calculus" },
-                        onNavigateToComplexCalculator = { currentScreen = "complex_calculator" },
-                        onNavigateToStatistics = { currentScreen = "statistics_calculator" }
+                        onNavigateToAgeCalculator = { navigateTo("age_calculator") },
+                        onNavigateToUnitConverter = { navigateTo("unit_converter") },
+                        onNavigateToConstants = { navigateTo("scientific_constants") },
+                        onNavigateToPercentageCgpa = { navigateTo("percentage_cgpa") },
+                        onNavigateToEmiCalculator = { navigateTo("emi_calculator") },
+                        onNavigateToHealthCalculator = { navigateTo("health_calculator") },
+                        onNavigateToCurrencyConverter = { navigateTo("currency_calculator") },
+                        onNavigateToDateTimeCalculator = { navigateTo("datetime_calculator") },
+                        onNavigateToMathScanner = { navigateTo("math_scanner") },
+                        onNavigateToGraphPlotter = { navigateTo("graph_plotter") },
+                        onNavigateToMatrixCalculator = { navigateTo("matrix_calculator") },
+                        onNavigateToEquationSolver = { navigateTo("equation_solver") },
+                        onNavigateToCalculus = { navigateTo("calculus") },
+                        onNavigateToComplexCalculator = { navigateTo("complex_calculator") },
+                        onNavigateToStatistics = { navigateTo("statistics_calculator") }
                     )
                 } else if (currentScreen == "age_calculator") {
                     AgeCalculatorScreen(
                         viewModel = ageViewModel,
-                        onBack = { currentScreen = "calculator" }
+                        onBack = { screenStack = screenStack.dropLast(1) }
                     )
                 } else if (currentScreen == "unit_converter") {
                     UnitConverterScreen(
                         viewModel = unitViewModel,
-                        onBack = { currentScreen = "calculator" }
+                        onBack = { screenStack = screenStack.dropLast(1) }
                     )
                 } else if (currentScreen == "scientific_constants") {
                     ScientificConstantsScreen(
                         viewModel = constantsViewModel,
-                        onBack = { currentScreen = "calculator" }
+                        onBack = { screenStack = screenStack.dropLast(1) }
                     )
                 } else if (currentScreen == "percentage_cgpa") {
                     PercentageCgpaScreen(
                         viewModel = percentageViewModel,
-                        onBack = { currentScreen = "calculator" }
+                        onBack = { screenStack = screenStack.dropLast(1) }
                     )
                 } else if (currentScreen == "emi_calculator") {
                     EmiCalculatorScreen(
                         viewModel = emiViewModel,
-                        onBack = { currentScreen = "calculator" }
+                        onBack = { screenStack = screenStack.dropLast(1) }
                     )
                 } else if (currentScreen == "health_calculator") {
                     HealthCalculatorScreen(
                         viewModel = healthViewModel,
-                        onBack = { currentScreen = "calculator" }
+                        onBack = { screenStack = screenStack.dropLast(1) }
                     )
                 } else if (currentScreen == "currency_calculator") {
                     CurrencyConverterScreen(
                         viewModel = currencyViewModel,
-                        onBack = { currentScreen = "calculator" }
+                        onBack = { screenStack = screenStack.dropLast(1) }
                     )
                 } else if (currentScreen == "datetime_calculator") {
                     DateTimeCalculatorScreen(
                         viewModel = dateTimeViewModel,
-                        onBack = { currentScreen = "calculator" }
+                        onBack = { screenStack = screenStack.dropLast(1) }
                     )
                 } else if (currentScreen == "math_scanner") {
                     MathScannerScreen(
                         viewModel = mathScannerViewModel,
-                        onBack = { currentScreen = "calculator" }
+                        onBack = { screenStack = screenStack.dropLast(1) }
                     )
                 } else if (currentScreen == "graph_plotter") {
                     GraphPlotterScreen(
                         viewModel = graphViewModel,
-                        onBack = { currentScreen = "calculator" }
+                        onBack = { screenStack = screenStack.dropLast(1) }
                     )
                 } else if (currentScreen == "matrix_calculator") {
                     MatrixCalculatorScreen(
                         viewModel = matrixViewModel,
-                        onBack = { currentScreen = "calculator" }
+                        onBack = { screenStack = screenStack.dropLast(1) }
                     )
                 } else if (currentScreen == "equation_solver") {
                     EquationSolverScreen(
                         viewModel = equationViewModel,
-                        onBack = { currentScreen = "calculator" }
+                        onBack = { screenStack = screenStack.dropLast(1) }
                     )
                 } else if (currentScreen == "calculus") {
                     CalculusScreen(
                         viewModel = calculusViewModel,
-                        onBack = { currentScreen = "calculator" }
+                        onBack = { screenStack = screenStack.dropLast(1) }
                     )
                 } else if (currentScreen == "complex_calculator") {
                     ComplexCalculatorScreen(
                         viewModel = complexViewModel,
-                        onBack = { currentScreen = "calculator" }
+                        onBack = { screenStack = screenStack.dropLast(1) }
                     )
                 } else if (currentScreen == "statistics_calculator") {
                     StatisticsScreen(
                         viewModel = statisticsViewModel,
-                        onBack = { currentScreen = "calculator" }
+                        onBack = { screenStack = screenStack.dropLast(1) }
                     )
                 }
             }

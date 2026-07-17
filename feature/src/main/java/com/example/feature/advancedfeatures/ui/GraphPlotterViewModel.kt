@@ -19,6 +19,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.yield
 import kotlinx.coroutines.Job
 import kotlin.math.*
 
@@ -308,105 +309,118 @@ class GraphPlotterViewModel(
         _state.update { it.copy(history = plotGraphUseCase.getHistory()) }
     }
 
-    private fun calculatePointsForGraphs(
+    private suspend fun calculatePointsForGraphs(
         graphs: List<PlottedGraph>,
         viewport: GraphViewport,
         animParams: Map<String, Double>
     ): List<List<Pair<Double, Double>>> {
         return graphs.map { graph ->
+            yield()
             when (graph) {
                 is PlottedGraph.Cartesian -> {
+                    val ast = calculatorEngine.parse(graph.expr)
                     val range = viewport.minX..viewport.maxX
                     val numPoints = 300
                     val step = (range.endInclusive - range.start) / numPoints
-                    val pointsList = mutableListOf<Pair<Double, Double>>()
+                    val pointsList = ArrayList<Pair<Double, Double>>(numPoints + 1)
+                    val vars = HashMap<String, Double>().apply {
+                        putAll(animParams)
+                    }
                     var x = range.start
                     while (x <= range.endInclusive) {
-                        val vars = mapOf("x" to x) + animParams
-                        val result = calculatorEngine.evaluate(graph.expr, false, vars)
-                        if (result is com.example.core.util.Result.Success) {
-                            val y = result.data
-                            if (!y.isNaN() && !y.isInfinite()) {
-                                pointsList.add(x to y)
-                            } else {
-                                pointsList.add(x to Double.NaN)
-                            }
-                        } else {
-                            pointsList.add(x to Double.NaN)
+                        yield()
+                        vars["x"] = x
+                        val y = try {
+                            val res = ast.eval(vars, false)
+                            if (res.isNaN() || res.isInfinite()) Double.NaN else res
+                        } catch (e: Exception) {
+                            Double.NaN
                         }
+                        pointsList.add(x to y)
                         x += step
                     }
                     pointsList
                 }
                 is PlottedGraph.Parametric -> {
+                    val astX = calculatorEngine.parse(graph.xExpr)
+                    val astY = calculatorEngine.parse(graph.yExpr)
                     val minT = -2 * Math.PI
                     val maxT = 2 * Math.PI
                     val numPoints = 300
                     val step = (maxT - minT) / numPoints
-                    val pointsList = mutableListOf<Pair<Double, Double>>()
+                    val pointsList = ArrayList<Pair<Double, Double>>(numPoints + 1)
+                    val vars = HashMap<String, Double>().apply {
+                        putAll(animParams)
+                    }
                     var t = minT
                     while (t <= maxT) {
-                        val vars = mapOf("t" to t) + animParams
-                        val xRes = calculatorEngine.evaluate(graph.xExpr, false, vars)
-                        val yRes = calculatorEngine.evaluate(graph.yExpr, false, vars)
-                        if (xRes is com.example.core.util.Result.Success && yRes is com.example.core.util.Result.Success) {
-                            val px = xRes.data
-                            val py = yRes.data
-                            if (px.isFinite() && py.isFinite()) {
-                                pointsList.add(px to py)
-                            } else {
-                                pointsList.add(Double.NaN to Double.NaN)
-                            }
-                        } else {
-                            pointsList.add(Double.NaN to Double.NaN)
+                        yield()
+                        vars["t"] = t
+                        val px = try {
+                            val res = astX.eval(vars, false)
+                            if (res.isFinite()) res else Double.NaN
+                        } catch (e: Exception) {
+                            Double.NaN
                         }
+                        val py = try {
+                            val res = astY.eval(vars, false)
+                            if (res.isFinite()) res else Double.NaN
+                        } catch (e: Exception) {
+                            Double.NaN
+                        }
+                        pointsList.add(px to py)
                         t += step
                     }
                     pointsList
                 }
                 is PlottedGraph.Polar -> {
+                    val astR = calculatorEngine.parse(graph.rExpr)
                     val minTheta = 0.0
                     val maxTheta = 2 * Math.PI
                     val numPoints = 300
                     val step = (maxTheta - minTheta) / numPoints
-                    val pointsList = mutableListOf<Pair<Double, Double>>()
+                    val pointsList = ArrayList<Pair<Double, Double>>(numPoints + 1)
+                    val vars = HashMap<String, Double>().apply {
+                        putAll(animParams)
+                    }
                     var theta = minTheta
                     while (theta <= maxTheta) {
-                        val vars = mapOf("theta" to theta) + animParams
-                        val rRes = calculatorEngine.evaluate(graph.rExpr, false, vars)
-                        if (rRes is com.example.core.util.Result.Success) {
-                            val r = rRes.data
+                        yield()
+                        vars["theta"] = theta
+                        val pxPy = try {
+                            val r = astR.eval(vars, false)
                             if (r.isFinite()) {
-                                val px = r * cos(theta)
-                                val py = r * sin(theta)
-                                pointsList.add(px to py)
+                                (r * cos(theta)) to (r * sin(theta))
                             } else {
-                                pointsList.add(Double.NaN to Double.NaN)
+                                Double.NaN to Double.NaN
                             }
-                        } else {
-                            pointsList.add(Double.NaN to Double.NaN)
+                        } catch (e: Exception) {
+                            Double.NaN to Double.NaN
                         }
+                        pointsList.add(pxPy)
                         theta += step
                     }
                     pointsList
                 }
                 is PlottedGraph.ConicCircle -> {
-                    val pointsList = mutableListOf<Pair<Double, Double>>()
+                    val pointsList = ArrayList<Pair<Double, Double>>(301)
                     val steps = 300
                     val step = 2 * Math.PI / steps
                     for (i in 0..steps) {
+                        yield()
                         val t = i * step
                         pointsList.add((graph.h + graph.r * cos(t)) to (graph.k + graph.r * sin(t)))
                     }
                     pointsList
                 }
                 is PlottedGraph.ConicParabola -> {
-                    val pointsList = mutableListOf<Pair<Double, Double>>()
+                    val pointsList = ArrayList<Pair<Double, Double>>(301)
                     val steps = 300
                     val minT = -10.0
                     val maxT = 10.0
                     val step = (maxT - minT) / steps
                     for (i in 0..steps) {
+                        yield()
                         val t = minT + i * step
                         val px = if (graph.isHorizontal) graph.h + graph.a * t * t else graph.h + 2 * graph.a * t
                         val py = if (graph.isHorizontal) graph.k + 2 * graph.a * t else graph.k + graph.a * t * t
@@ -415,23 +429,25 @@ class GraphPlotterViewModel(
                     pointsList
                 }
                 is PlottedGraph.ConicEllipse -> {
-                    val pointsList = mutableListOf<Pair<Double, Double>>()
+                    val pointsList = ArrayList<Pair<Double, Double>>(301)
                     val steps = 300
                     val step = 2 * Math.PI / steps
                     for (i in 0..steps) {
+                        yield()
                         val t = i * step
                         pointsList.add((graph.h + graph.a * cos(t)) to (graph.k + graph.b * sin(t)))
                     }
                     pointsList
                 }
                 is PlottedGraph.ConicHyperbola -> {
-                    val pointsList = mutableListOf<Pair<Double, Double>>()
+                    val pointsList = ArrayList<Pair<Double, Double>>(303)
                     val steps = 150
                     val minT = -3.0
                     val maxT = 3.0
                     val step = (maxT - minT) / steps
                     
                     for (i in 0..steps) {
+                        yield()
                         val t = minT + i * step
                         val px = if (graph.isHorizontal) graph.h - graph.a * cosh(t) else graph.h + graph.b * sinh(t)
                         val py = if (graph.isHorizontal) graph.k + graph.b * sinh(t) else graph.k - graph.a * cosh(t)
@@ -439,6 +455,7 @@ class GraphPlotterViewModel(
                     }
                     pointsList.add(Double.NaN to Double.NaN)
                     for (i in 0..steps) {
+                        yield()
                         val t = minT + i * step
                         val px = if (graph.isHorizontal) graph.h + graph.a * cosh(t) else graph.h + graph.b * sinh(t)
                         val py = if (graph.isHorizontal) graph.k + graph.b * sinh(t) else graph.k + graph.a * cosh(t)
@@ -450,17 +467,38 @@ class GraphPlotterViewModel(
         }
     }
 
-    private fun calculateDerivativePoints(
+    private suspend fun calculateDerivativePoints(
         expression: String,
         viewport: GraphViewport
     ): List<Pair<Double, Double>> {
+        val ast = calculatorEngine.parse(expression)
         val range = viewport.minX..viewport.maxX
         val numPoints = 300
         val step = (range.endInclusive - range.start) / numPoints
-        val points = mutableListOf<Pair<Double, Double>>()
+        val points = ArrayList<Pair<Double, Double>>(numPoints + 1)
+        val vars = HashMap<String, Double>()
+        val h = 1e-7
+        
+        fun evalAst(v: Double): Double? {
+            vars["x"] = v
+            return try {
+                val res = ast.eval(vars, false)
+                if (res.isNaN() || res.isInfinite()) null else res
+            } catch (e: Exception) {
+                null
+            }
+        }
+
         var x = range.start
         while (x <= range.endInclusive) {
-            val dY = calculusUseCase.calculateDerivative(expression, x)
+            yield()
+            val fxh1 = evalAst(x + h)
+            val fxh2 = evalAst(x - h)
+            val dY = if (fxh1 != null && fxh2 != null) {
+                (fxh1 - fxh2) / (2 * h)
+            } else {
+                null
+            }
             if (dY != null && !dY.isNaN() && !dY.isInfinite()) {
                 points.add(x to dY)
             } else {
@@ -471,13 +509,14 @@ class GraphPlotterViewModel(
         return points
     }
 
-    private fun analyzeFunctions(
+    private suspend fun analyzeFunctions(
         expressions: List<String>,
         viewport: GraphViewport
     ): Pair<List<Double>, List<ExtremerPoint>> {
         val allRoots = mutableListOf<Double>()
         val allExtrema = mutableListOf<ExtremerPoint>()
         expressions.forEach { expr ->
+            yield()
             val roots = rootFinder.findRoots(expr, viewport.minX, viewport.maxX)
             allRoots.addAll(roots)
             val extrema = functionAnalyzer.findExtrema(expr, viewport.minX, viewport.maxX)
@@ -486,7 +525,7 @@ class GraphPlotterViewModel(
         return allRoots.distinct().sorted() to allExtrema.distinctBy { it.x to it.isMaximum }.sortedBy { it.x }
     }
 
-    private fun findIntersections(
+    private suspend fun findIntersections(
         expr1: String,
         expr2: String,
         minX: Double,
@@ -499,6 +538,7 @@ class GraphPlotterViewModel(
         var prevVal = evaluateDiff(expr1, expr2, prevX)
 
         for (i in 1..steps) {
+            yield()
             val currX = minX + i * step
             val currVal = evaluateDiff(expr1, expr2, currX)
 
@@ -582,7 +622,7 @@ class GraphPlotterViewModel(
         return mid
     }
 
-    private fun findIntersectionsForExpressions(
+    private suspend fun findIntersectionsForExpressions(
         expressions: List<String>,
         viewport: GraphViewport
     ): List<Pair<Double, Double>> {
@@ -597,65 +637,7 @@ class GraphPlotterViewModel(
         return allIntersections.distinctBy { Math.round(it.first * 10000.0) to Math.round(it.second * 10000.0) }
     }
 
-    private fun updateGraphState(
-        graphs: List<PlottedGraph>,
-        viewport: GraphViewport,
-        plotDerivatives: Set<Int> = _state.value.plotDerivatives,
-        shadedIntegration: ShadedIntegrationInfo? = _state.value.shadedIntegration,
-        animParams: Map<String, Double> = _state.value.animatingParams
-    ): GraphState {
-        val points = calculatePointsForGraphs(graphs, viewport, animParams)
-        val expressions = graphs.map { it.label }
-        val cartesianExpressions = graphs.filterIsInstance<PlottedGraph.Cartesian>().map { it.expr }
-        val (roots, extrema) = analyzeFunctions(cartesianExpressions, viewport)
-        val intersections = findIntersectionsForExpressions(cartesianExpressions, viewport)
 
-        // Calculate derivative points for expressions in plotDerivatives
-        val derivativePoints = plotDerivatives.filter { it in graphs.indices }.associateWith { index ->
-            val graph = graphs[index]
-            if (graph is PlottedGraph.Cartesian) {
-                calculateDerivativePoints(graph.expr, viewport)
-            } else {
-                emptyList()
-            }
-        }
-
-        // Run equation analysis for active graphs
-        val equationAnalysis = graphs.map { graph ->
-            val inputStr = when (graph) {
-                is PlottedGraph.Cartesian -> graph.expr
-                is PlottedGraph.ConicCircle -> "(x - ${graph.h})^2 + (y - ${graph.k})^2 = ${graph.r * graph.r}"
-                is PlottedGraph.ConicParabola -> if (graph.isHorizontal) "y^2 = ${4 * graph.a}*x" else "x^2 = ${4 * graph.a}*y"
-                is PlottedGraph.ConicEllipse -> "x^2/${graph.a * graph.a} + y^2/${graph.b * graph.b} = 1"
-                is PlottedGraph.ConicHyperbola -> if (graph.isHorizontal) "x^2/${graph.a * graph.a} - y^2/${graph.b * graph.b} = 1" else "y^2/${graph.a * graph.a} - x^2/${graph.b * graph.b} = 1"
-                is PlottedGraph.Polar -> "r = ${graph.rExpr}"
-                is PlottedGraph.Parametric -> "x = ${graph.xExpr}, y = ${graph.yExpr}"
-            }
-            equationAnalyzer.analyze(inputStr)
-        }
-
-        return GraphState(
-            expressions = expressions,
-            points = points,
-            viewport = viewport,
-            roots = roots,
-            extrema = extrema,
-            selectedPoint = null,
-            selectedExpressionIndex = null,
-            plotDerivatives = plotDerivatives,
-            derivativePoints = derivativePoints,
-            shadedIntegration = shadedIntegration,
-            intersections = intersections,
-            graphs = graphs,
-            history = plotGraphUseCase.getHistory(),
-            equationAnalysis = equationAnalysis,
-            jeeSolverMode = _state.value.jeeSolverMode,
-            animatingParams = animParams,
-            isAnimating = _state.value.isAnimating,
-            animationSpeed = _state.value.animationSpeed,
-            animationTime = _state.value.animationTime
-        )
-    }
 
     private class CalculatedGraphData(
         val expressions: List<String>,
@@ -678,6 +660,7 @@ class GraphPlotterViewModel(
     ) {
         calculationJob?.cancel()
         calculationJob = viewModelScope.launch {
+            delay(250)
             val data = withContext(Dispatchers.Default) {
                 val points = calculatePointsForGraphs(graphs, viewport, animParams)
                 val expressions = graphs.map { it.label }
@@ -747,14 +730,14 @@ class GraphPlotterViewModel(
     }
 
     fun toggleDerivativePlot(index: Int) {
-        _state.update { currentState ->
-            val newPlotDerivatives = if (currentState.plotDerivatives.contains(index)) {
-                currentState.plotDerivatives - index
-            } else {
-                currentState.plotDerivatives + index
-            }
-            updateGraphState(currentState.graphs, currentState.viewport, plotDerivatives = newPlotDerivatives)
+        val currentState = _state.value
+        val newPlotDerivatives = if (currentState.plotDerivatives.contains(index)) {
+            currentState.plotDerivatives - index
+        } else {
+            currentState.plotDerivatives + index
         }
+        _state.update { it.copy(plotDerivatives = newPlotDerivatives) }
+        triggerBackgroundCalculation(currentState.graphs, currentState.viewport, plotDerivatives = newPlotDerivatives)
     }
 
     fun saveFormula(formula: String) {
@@ -767,30 +750,27 @@ class GraphPlotterViewModel(
     }
 
     fun calculateAndShadeArea(expressionIndex: Int, a: Double, b: Double) {
-        _state.update { currentState ->
-            if (expressionIndex in currentState.graphs.indices) {
-                val graph = currentState.graphs[expressionIndex]
-                if (graph is PlottedGraph.Cartesian) {
-                    val result = calculusUseCase.calculateIntegration(graph.expr, a, b)
+        val currentState = _state.value
+        if (expressionIndex in currentState.graphs.indices) {
+            val graph = currentState.graphs[expressionIndex]
+            if (graph is PlottedGraph.Cartesian) {
+                viewModelScope.launch {
+                    val result = withContext(Dispatchers.Default) {
+                        calculusUseCase.calculateIntegration(graph.expr, a, b)
+                    }
                     if (result != null && !result.isNaN() && !result.isInfinite()) {
                         val info = ShadedIntegrationInfo(expressionIndex, a, b, result)
-                        updateGraphState(currentState.graphs, currentState.viewport, shadedIntegration = info)
-                    } else {
-                        currentState
+                        _state.update { it.copy(shadedIntegration = info) }
+                        triggerBackgroundCalculation(_state.value.graphs, _state.value.viewport, shadedIntegration = info)
                     }
-                } else {
-                    currentState
                 }
-            } else {
-                currentState
             }
         }
     }
 
     fun clearShadedArea() {
-        _state.update { currentState ->
-            updateGraphState(currentState.graphs, currentState.viewport, shadedIntegration = null)
-        }
+        _state.update { it.copy(shadedIntegration = null) }
+        triggerBackgroundCalculation(_state.value.graphs, _state.value.viewport, shadedIntegration = null)
     }
 
     fun addExpression(expression: String) {
@@ -846,125 +826,109 @@ class GraphPlotterViewModel(
             return
         }
 
-        _state.update { currentState ->
-            val newGraph = PlottedGraph.Cartesian(expression)
-            val newGraphs = currentState.graphs + newGraph
-            saveHistory(expression, "Cartesian", "Blue")
-            updateGraphState(newGraphs, currentState.viewport)
-        }
+        val newGraph = PlottedGraph.Cartesian(expression)
+        val newGraphs = _state.value.graphs + newGraph
+        saveHistory(expression, "Cartesian", "Blue")
+        _state.update { it.copy(graphs = newGraphs) }
+        triggerBackgroundCalculation(newGraphs, _state.value.viewport)
     }
 
     fun addParametric(xExpr: String, yExpr: String) {
-        _state.update { currentState ->
-            val newGraph = PlottedGraph.Parametric(xExpr, yExpr)
-            val newGraphs = currentState.graphs + newGraph
-            saveHistory("x=$xExpr, y=$yExpr", "Parametric", "Red")
-            updateGraphState(newGraphs, currentState.viewport)
-        }
+        val newGraph = PlottedGraph.Parametric(xExpr, yExpr)
+        val newGraphs = _state.value.graphs + newGraph
+        saveHistory("x=$xExpr, y=$yExpr", "Parametric", "Red")
+        _state.update { it.copy(graphs = newGraphs) }
+        triggerBackgroundCalculation(newGraphs, _state.value.viewport)
     }
 
     fun addPolar(rExpr: String) {
-        _state.update { currentState ->
-            val newGraph = PlottedGraph.Polar(rExpr)
-            val newGraphs = currentState.graphs + newGraph
-            saveHistory("r=$rExpr", "Polar", "Magenta")
-            updateGraphState(newGraphs, currentState.viewport)
-        }
+        val newGraph = PlottedGraph.Polar(rExpr)
+        val newGraphs = _state.value.graphs + newGraph
+        saveHistory("r=$rExpr", "Polar", "Magenta")
+        _state.update { it.copy(graphs = newGraphs) }
+        triggerBackgroundCalculation(newGraphs, _state.value.viewport)
     }
 
     fun addConicCircle(h: Double, k: Double, r: Double) {
-        _state.update { currentState ->
-            val newGraph = PlottedGraph.ConicCircle(h, k, r)
-            val newGraphs = currentState.graphs + newGraph
-            updateGraphState(newGraphs, currentState.viewport)
-        }
+        val newGraph = PlottedGraph.ConicCircle(h, k, r)
+        val newGraphs = _state.value.graphs + newGraph
+        _state.update { it.copy(graphs = newGraphs) }
+        triggerBackgroundCalculation(newGraphs, _state.value.viewport)
     }
 
     fun addConicParabola(h: Double, k: Double, a: Double, isHorizontal: Boolean) {
-        _state.update { currentState ->
-            val newGraph = PlottedGraph.ConicParabola(h, k, a, isHorizontal)
-            val newGraphs = currentState.graphs + newGraph
-            updateGraphState(newGraphs, currentState.viewport)
-        }
+        val newGraph = PlottedGraph.ConicParabola(h, k, a, isHorizontal)
+        val newGraphs = _state.value.graphs + newGraph
+        _state.update { it.copy(graphs = newGraphs) }
+        triggerBackgroundCalculation(newGraphs, _state.value.viewport)
     }
 
     fun addConicEllipse(h: Double, k: Double, a: Double, b: Double) {
-        _state.update { currentState ->
-            val newGraph = PlottedGraph.ConicEllipse(h, k, a, b)
-            val newGraphs = currentState.graphs + newGraph
-            updateGraphState(newGraphs, currentState.viewport)
-        }
+        val newGraph = PlottedGraph.ConicEllipse(h, k, a, b)
+        val newGraphs = _state.value.graphs + newGraph
+        _state.update { it.copy(graphs = newGraphs) }
+        triggerBackgroundCalculation(newGraphs, _state.value.viewport)
     }
 
     fun addConicHyperbola(h: Double, k: Double, a: Double, b: Double, isHorizontal: Boolean) {
-        _state.update { currentState ->
-            val newGraph = PlottedGraph.ConicHyperbola(h, k, a, b, isHorizontal)
-            val newGraphs = currentState.graphs + newGraph
-            updateGraphState(newGraphs, currentState.viewport)
-        }
+        val newGraph = PlottedGraph.ConicHyperbola(h, k, a, b, isHorizontal)
+        val newGraphs = _state.value.graphs + newGraph
+        _state.update { it.copy(graphs = newGraphs) }
+        triggerBackgroundCalculation(newGraphs, _state.value.viewport)
     }
 
     fun removeExpression(index: Int) {
-        _state.update { currentState ->
-            if (index in currentState.graphs.indices) {
-                val newGraphs = currentState.graphs.toMutableList().apply { removeAt(index) }
-                val newPlotDerivatives = currentState.plotDerivatives
-                    .filter { it != index }
-                    .map { if (it > index) it - 1 else it }
-                    .toSet()
-                val newShading = if (currentState.shadedIntegration?.expressionIndex == index) {
-                    null
-                } else if (currentState.shadedIntegration != null && currentState.shadedIntegration.expressionIndex > index) {
-                    currentState.shadedIntegration.copy(expressionIndex = currentState.shadedIntegration.expressionIndex - 1)
-                } else {
-                    currentState.shadedIntegration
-                }
-                updateGraphState(
-                    newGraphs,
-                    currentState.viewport,
-                    plotDerivatives = newPlotDerivatives,
-                    shadedIntegration = newShading
-                )
+        val currentState = _state.value
+        if (index in currentState.graphs.indices) {
+            val newGraphs = currentState.graphs.toMutableList().apply { removeAt(index) }
+            val newPlotDerivatives = currentState.plotDerivatives
+                .filter { it != index }
+                .map { if (it > index) it - 1 else it }
+                .toSet()
+            val newShading = if (currentState.shadedIntegration?.expressionIndex == index) {
+                null
+            } else if (currentState.shadedIntegration != null && currentState.shadedIntegration.expressionIndex > index) {
+                currentState.shadedIntegration.copy(expressionIndex = currentState.shadedIntegration.expressionIndex - 1)
             } else {
-                currentState
+                currentState.shadedIntegration
             }
+            _state.update { it.copy(graphs = newGraphs, plotDerivatives = newPlotDerivatives, shadedIntegration = newShading) }
+            triggerBackgroundCalculation(newGraphs, currentState.viewport, plotDerivatives = newPlotDerivatives, shadedIntegration = newShading)
         }
     }
 
     fun editExpression(index: Int, newExpr: String) {
-        _state.update { currentState ->
-            if (index in currentState.graphs.indices) {
-                val updatedGraphs = currentState.graphs.toMutableList()
-                val oldGraph = updatedGraphs[index]
-                val newGraph = when (oldGraph) {
-                    is PlottedGraph.Cartesian -> PlottedGraph.Cartesian(newExpr)
-                    is PlottedGraph.Polar -> PlottedGraph.Polar(newExpr)
-                    is PlottedGraph.Parametric -> {
-                        if (newExpr.contains(",")) {
-                            val parts = newExpr.split(",")
-                            val xPart = parts[0].substringAfter("=").trim()
-                            val yPart = parts[1].substringAfter("=").trim()
-                            PlottedGraph.Parametric(xPart, yPart)
-                        } else {
-                            PlottedGraph.Parametric(newExpr, oldGraph.yExpr)
-                        }
+        val currentState = _state.value
+        if (index in currentState.graphs.indices) {
+            val updatedGraphs = currentState.graphs.toMutableList()
+            val oldGraph = updatedGraphs[index]
+            val newGraph = when (oldGraph) {
+                is PlottedGraph.Cartesian -> PlottedGraph.Cartesian(newExpr)
+                is PlottedGraph.Polar -> PlottedGraph.Polar(newExpr)
+                is PlottedGraph.Parametric -> {
+                    if (newExpr.contains(",")) {
+                        val parts = newExpr.split(",")
+                        val xPart = parts[0].substringAfter("=").trim()
+                        val yPart = parts[1].substringAfter("=").trim()
+                        PlottedGraph.Parametric(xPart, yPart)
+                    } else {
+                        PlottedGraph.Parametric(newExpr, oldGraph.yExpr)
                     }
-                    is PlottedGraph.ConicCircle -> {
-                        val clean = newExpr.replace(" ", "").lowercase()
-                        if (clean.matches(Regex("x\\^2\\+y\\^2=\\d+"))) {
-                            val rSq = clean.substringAfter("=").toDoubleOrNull() ?: 25.0
-                            PlottedGraph.ConicCircle(0.0, 0.0, sqrt(rSq))
-                        } else {
-                            PlottedGraph.Cartesian(newExpr)
-                        }
-                    }
-                    else -> PlottedGraph.Cartesian(newExpr)
                 }
-                updatedGraphs[index] = newGraph
-                updateGraphState(updatedGraphs, currentState.viewport)
-            } else {
-                currentState
+                is PlottedGraph.ConicCircle -> {
+                    val clean = newExpr.replace(" ", "").lowercase()
+                    if (clean.matches(Regex("x\\^2\\+y\\^2=\\d+"))) {
+                        val rSq = clean.substringAfter("=").toDoubleOrNull() ?: 25.0
+                        PlottedGraph.ConicCircle(0.0, 0.0, sqrt(rSq))
+                    } else {
+                        PlottedGraph.Cartesian(newExpr)
+                    }
+                }
+                else -> PlottedGraph.Cartesian(newExpr)
             }
+            updatedGraphs[index] = newGraph
+            _state.update { it.copy(graphs = updatedGraphs) }
+            triggerBackgroundCalculation(updatedGraphs, currentState.viewport)
         }
     }
 
@@ -1083,10 +1047,9 @@ class GraphPlotterViewModel(
     }
 
     fun resetViewport() {
-        _state.update { currentState ->
-            val newVp = GraphViewport()
-            updateGraphState(currentState.graphs, newVp)
-        }
+        val newVp = GraphViewport()
+        _state.update { it.copy(viewport = newVp) }
+        triggerBackgroundCalculation(_state.value.graphs, newVp)
     }
 
     fun clear() {
@@ -1164,10 +1127,9 @@ class GraphPlotterViewModel(
             }
             else -> PlottedGraph.Cartesian(item.equation)
         }
-        _state.update { currentState ->
-            val newGraphs = currentState.graphs + graph
-            updateGraphState(newGraphs, newVp)
-        }
+        val newGraphs = _state.value.graphs + graph
+        _state.update { it.copy(graphs = newGraphs, viewport = newVp) }
+        triggerBackgroundCalculation(newGraphs, newVp)
     }
 
     fun clearAllHistory() {

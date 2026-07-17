@@ -9,13 +9,26 @@ class RootFinder(private val calculatorEngine: CalculatorEngine) {
     fun findRoots(expression: String, minX: Double, maxX: Double, steps: Int = 150): List<Double> {
         val roots = mutableListOf<Double>()
         if (minX >= maxX) return roots
+        val ast = calculatorEngine.parse(expression)
+        val vars = HashMap<String, Double>()
+
+        fun evalAst(v: Double): Double? {
+            vars["x"] = v
+            return try {
+                val res = ast.eval(vars, false)
+                if (res.isNaN() || res.isInfinite()) null else res
+            } catch (e: Exception) {
+                null
+            }
+        }
+
         val step = (maxX - minX) / steps
         var prevX = minX
-        var prevY = evaluateAt(expression, prevX)
+        var prevY = evalAst(prevX)
 
         for (i in 1..steps) {
             val currX = minX + i * step
-            val currY = evaluateAt(expression, currX)
+            val currY = evalAst(currX)
 
             if (prevY != null && currY != null) {
                 if (Math.abs(prevY) < 1e-9) {
@@ -28,7 +41,7 @@ class RootFinder(private val calculatorEngine: CalculatorEngine) {
                     }
                 } else if (prevY * currY < 0.0) {
                     // Sign change found, use bisection to pinpoint precise root
-                    val root = findRootBisection(expression, prevX, currX)
+                    val root = findRootBisection(::evalAst, prevX, currX)
                     if (root != null && roots.none { Math.abs(it - root) < 1e-4 }) {
                         roots.add(root)
                     }
@@ -40,26 +53,18 @@ class RootFinder(private val calculatorEngine: CalculatorEngine) {
         return roots.sorted()
     }
 
-    private fun evaluateAt(expression: String, x: Double): Double? {
-        val result = calculatorEngine.evaluate(expression, false, mapOf("x" to x))
-        return if (result is Result.Success) {
-            val y = result.data
-            if (y.isNaN() || y.isInfinite()) null else y
-        } else null
-    }
-
-    private fun findRootBisection(expression: String, x1: Double, x2: Double, maxIterations: Int = 12): Double? {
+    private inline fun findRootBisection(evalAst: (Double) -> Double?, x1: Double, x2: Double, maxIterations: Int = 12): Double? {
         var low = x1
         var high = x2
-        var fLow = evaluateAt(expression, low) ?: return null
-        val fHigh = evaluateAt(expression, high) ?: return null
+        var fLow = evalAst(low) ?: return null
+        val fHigh = evalAst(high) ?: return null
 
         if (fLow * fHigh > 0.0) return null
 
         var mid = (low + high) / 2.0
         for (i in 0 until maxIterations) {
             mid = (low + high) / 2.0
-            val fMid = evaluateAt(expression, mid) ?: return mid
+            val fMid = evalAst(mid) ?: return mid
             if (Math.abs(fMid) < 1e-6) {
                 return mid
             }

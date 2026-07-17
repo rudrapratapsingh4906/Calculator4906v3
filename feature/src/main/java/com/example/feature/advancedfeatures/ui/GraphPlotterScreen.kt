@@ -550,6 +550,33 @@ fun BottomAnalysisCard(
     }
 }
 
+private data class AnimatedPointData(
+    val animX: Double,
+    val animY: Double,
+    val hasTangent: Boolean,
+    val tx1: Double,
+    val ty1: Double,
+    val tx2: Double,
+    val ty2: Double,
+    val hasNormal: Boolean,
+    val ny1: Double,
+    val ny2: Double
+)
+
+private data class SelectedPointData(
+    val selX: Double,
+    val selY: Double,
+    val hasTangent: Boolean,
+    val tx1: Double,
+    val ty1: Double,
+    val tx2: Double,
+    val ty2: Double,
+    val hasNormal: Boolean,
+    val nyStart: Double,
+    val nyEnd: Double,
+    val isNormalVertical: Boolean
+)
+
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun GraphPlotterScreen(
@@ -743,6 +770,164 @@ fun GraphPlotterScreen(
     var isLoading by remember { mutableStateOf(false) }
     var expandedSection by remember { mutableStateOf("Functions") }
 
+    // Pre-calculated Riemann Sums coordinates in viewport space
+    val riemannRects = remember(state.viewport, state.graphs, state.animatingParams, showRiemann) {
+        if (!showRiemann) emptyList<Triple<Double, Double, Double>>()
+        else {
+            val firstCartesian = state.graphs.filterIsInstance<PlottedGraph.Cartesian>().firstOrNull()
+            if (firstCartesian == null) emptyList()
+            else {
+                val expr = firstCartesian.expr
+                val vp = state.viewport
+                val n = 20
+                val dx = (vp.maxX - vp.minX) / n
+                List(n) { i ->
+                    val rx = vp.minX + i * dx + dx / 2.0
+                    val ry = viewModel.evaluateExpression(expr, rx) ?: 0.0
+                    val xStart = vp.minX + i * dx
+                    val xEnd = vp.minX + (i + 1) * dx
+                    Triple(xStart, xEnd, ry)
+                }
+            }
+        }
+    }
+
+    // Custom structure for holding animated point pre-calculations
+    val animatedPointData = remember(state.viewport, state.graphs, state.animationTime, state.animatingParams, showAnimatedPoint, showTangent, showNormal) {
+        val firstCartesian = state.graphs.filterIsInstance<PlottedGraph.Cartesian>().firstOrNull()
+        if (firstCartesian == null || !showAnimatedPoint) null
+        else {
+            val expr = firstCartesian.expr
+            val vp = state.viewport
+            val tLoop = (state.animationTime % 10f) / 10f
+            val animX = vp.minX + tLoop * (vp.maxX - vp.minX)
+            val animY = viewModel.evaluateExpression(expr, animX)
+            if (animY == null || !animY.isFinite()) null
+            else {
+                var hasTangent = false
+                var tx1 = 0.0; var ty1 = 0.0; var tx2 = 0.0; var ty2 = 0.0
+                var hasNormal = false
+                var ny1 = 0.0; var ny2 = 0.0
+
+                val slope = viewModel.getDerivativeAt(expr, animX)
+                if (slope != null && slope.isFinite()) {
+                    if (showTangent) {
+                        hasTangent = true
+                        tx1 = vp.minX
+                        ty1 = slope * (tx1 - animX) + animY
+                        tx2 = vp.maxX
+                        ty2 = slope * (tx2 - animX) + animY
+                    }
+                    if (showNormal) {
+                        hasNormal = true
+                        val nSlope = if (Math.abs(slope) < 1e-9) 1e9 else -1.0 / slope
+                        ny1 = nSlope * (vp.minX - animX) + animY
+                        ny2 = nSlope * (vp.maxX - animX) + animY
+                    }
+                }
+                AnimatedPointData(
+                    animX = animX,
+                    animY = animY,
+                    hasTangent = hasTangent,
+                    tx1 = tx1,
+                    ty1 = ty1,
+                    tx2 = tx2,
+                    ty2 = ty2,
+                    hasNormal = hasNormal,
+                    ny1 = ny1,
+                    ny2 = ny2
+                )
+            }
+        }
+    }
+
+    // Pre-calculated selected trace point details in viewport space
+    val selectedPointData = remember(state.selectedPoint, state.selectedExpressionIndex, state.viewport, state.graphs, state.animatingParams) {
+        val selPoint = state.selectedPoint
+        val selExpr = state.selectedExpressionIndex?.let { state.expressions.getOrNull(it) }
+        if (selPoint == null || selExpr == null) null
+        else {
+            val selX = selPoint.first
+            val selY = selPoint.second
+            val vp = state.viewport
+            val slope = viewModel.getDerivativeAt(selExpr, selX)
+            if (slope == null || slope.isNaN() || slope.isInfinite()) {
+                null
+            } else {
+                val tx1 = vp.minX
+                val ty1 = slope * (tx1 - selX) + selY
+                val tx2 = vp.maxX
+                val ty2 = slope * (tx2 - selX) + selY
+
+                var hasNormal = true
+                var isNormalVertical = false
+                var nyStart = 0.0
+                var nyEnd = 0.0
+
+                if (Math.abs(slope) < 1e-9) {
+                    isNormalVertical = true
+                } else {
+                    val nSlope = -1.0 / slope
+                    nyStart = nSlope * (tx1 - selX) + selY
+                    nyEnd = nSlope * (tx2 - selX) + selY
+                }
+
+                SelectedPointData(
+                    selX = selX,
+                    selY = selY,
+                    hasTangent = true,
+                    tx1 = tx1,
+                    ty1 = ty1,
+                    tx2 = tx2,
+                    ty2 = ty2,
+                    hasNormal = hasNormal,
+                    nyStart = nyStart,
+                    nyEnd = nyEnd,
+                    isNormalVertical = isNormalVertical
+                )
+            }
+        }
+    }
+
+    // Precomputed Path for Portrait Definite Integration Shade
+    val portraitShadePath = remember(state.shadedIntegration, state.graphs, state.viewport, state.animatingParams, canvasWidth, canvasHeight) {
+        val info = state.shadedIntegration
+        if (info == null || info.expressionIndex !in state.expressions.indices || canvasWidth <= 0f || canvasHeight <= 0f) {
+            null
+        } else {
+            val expr = state.expressions[info.expressionIndex]
+            val vp = state.viewport
+            val rangeX = if (vp.maxX - vp.minX == 0.0) 1.0 else vp.maxX - vp.minX
+            val rangeY = if (vp.maxY - vp.minY == 0.0) 1.0 else vp.maxY - vp.minY
+
+            fun toPxX(x: Double): Float = ((x - vp.minX) / rangeX * canvasWidth).toFloat()
+            fun toPxY(y: Double): Float = (canvasHeight - (y - vp.minY) / rangeY * canvasHeight).toFloat()
+
+            val shadePath = Path()
+            val steps = 200
+            val step = (info.b - info.a) / steps
+            val startPxX = toPxX(info.a)
+            val zeroPxY = toPxY(0.0)
+
+            shadePath.moveTo(startPxX, zeroPxY)
+
+            for (i in 0..steps) {
+                val currX = info.a + i * step
+                val currY = viewModel.evaluateExpression(expr, currX)
+                if (currY != null && currY.isFinite()) {
+                    val px = toPxX(currX)
+                    val py = toPxY(currY)
+                    shadePath.lineTo(px, py)
+                }
+            }
+
+            val endPxX = toPxX(info.b)
+            shadePath.lineTo(endPxX, zeroPxY)
+            shadePath.close()
+            shadePath
+        }
+    }
+
     Scaffold(
         topBar = {
             val configuration = LocalConfiguration.current
@@ -831,6 +1016,22 @@ fun GraphPlotterScreen(
             val AxisColor = Color(1.0f, 1.0f, 1.0f, 0.35f)
             val TextColor = Color(0xFFFFFFFF)
             val SecondaryTextColor = Color(0xFFB8BEC9)
+
+            val landscapePaint = remember {
+                android.graphics.Paint().apply {
+                    color = Color(0xFFFFFFFF).toArgb()
+                    textSize = 28f
+                    isAntiAlias = true
+                }
+            }
+            val landscapeBannerPaint = remember {
+                android.graphics.Paint().apply {
+                    color = Color(0xFFFFFFFF).toArgb()
+                    textSize = 30f
+                    isAntiAlias = true
+                    typeface = android.graphics.Typeface.DEFAULT_BOLD
+                }
+            }
 
             Row(
                 modifier = Modifier
@@ -1054,11 +1255,7 @@ fun GraphPlotterScreen(
                                         strokeWidth = 2f
                                     )
 
-                                    val paint = android.graphics.Paint().apply {
-                                        color = TextColor.toArgb()
-                                        textSize = 28f
-                                        isAntiAlias = true
-                                    }
+                                    val paint = landscapePaint
 
                                     var tickX = startX
                                     while (tickX <= endX) {
@@ -1223,15 +1420,11 @@ fun GraphPlotterScreen(
                                     if (firstCartesian != null) {
                                         val expr = firstCartesian.expr
                                         
-                                        // Riemann Sums
+                                        // Riemann Sums using pre-calculated values
                                         if (showRiemann) {
-                                            val n = 20
-                                            val dx = (vp.maxX - vp.minX) / n
-                                            for (i in 0 until n) {
-                                                val rx = vp.minX + i * dx + dx / 2.0
-                                                val ry = viewModel.evaluateExpression(expr, rx) ?: 0.0
-                                                val rpx1 = toPxX(vp.minX + i * dx)
-                                                val rpx2 = toPxX(vp.minX + (i + 1) * dx)
+                                            riemannRects.forEach { (xStart, xEnd, ry) ->
+                                                val rpx1 = toPxX(xStart)
+                                                val rpx2 = toPxX(xEnd)
                                                 val rpy = toPxY(ry)
                                                 val zeroY = toPxY(0.0)
                                                 
@@ -1249,15 +1442,10 @@ fun GraphPlotterScreen(
                                             }
                                         }
 
-                                        // Animated Point Visuals
-                                        val tLoop = (state.animationTime % 10f) / 10f
-                                        val animX = vp.minX + tLoop * (vp.maxX - vp.minX)
-                                        val animY = viewModel.evaluateExpression(expr, animX)
-                                        
-                                        if (animY != null && animY.isFinite()) {
-                                            val apx = toPxX(animX)
-                                            val apy = toPxY(animY)
-                                            
+                                        // Animated Point Visuals using precalculated values
+                                        animatedPointData?.let { data ->
+                                            val apx = toPxX(data.animX)
+                                            val apy = toPxY(data.animY)
                                             if (apx in 0f..W && apy in 0f..H) {
                                                 if (showAnimatedPoint && state.isAnimating) {
                                                     drawCircle(
@@ -1272,33 +1460,24 @@ fun GraphPlotterScreen(
                                                     )
                                                 }
 
-                                                val slope = viewModel.getDerivativeAt(expr, animX)
-                                                if (slope != null && slope.isFinite()) {
-                                                    if (showTangent) {
-                                                        val tx1 = vp.minX
-                                                        val ty1 = slope * (tx1 - animX) + animY
-                                                        val tx2 = vp.maxX
-                                                        val ty2 = slope * (tx2 - animX) + animY
-                                                        drawLine(
-                                                            color = Color.Green,
-                                                            start = androidx.compose.ui.geometry.Offset(toPxX(tx1), toPxY(ty1)),
-                                                            end = androidx.compose.ui.geometry.Offset(toPxX(tx2), toPxY(ty2)),
-                                                            strokeWidth = 2f,
-                                                            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
-                                                        )
-                                                    }
-                                                    if (showNormal) {
-                                                        val nSlope = if (Math.abs(slope) < 1e-9) 1e9 else -1.0 / slope
-                                                        val ny1 = nSlope * (vp.minX - animX) + animY
-                                                        val ny2 = nSlope * (vp.maxX - animX) + animY
-                                                        drawLine(
-                                                            color = Color.Magenta,
-                                                            start = androidx.compose.ui.geometry.Offset(toPxX(vp.minX), toPxY(ny1)),
-                                                            end = androidx.compose.ui.geometry.Offset(toPxX(vp.maxX), toPxY(ny2)),
-                                                            strokeWidth = 2f,
-                                                            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
-                                                        )
-                                                    }
+                                                if (data.hasTangent) {
+                                                    drawLine(
+                                                        color = Color.Green,
+                                                        start = androidx.compose.ui.geometry.Offset(toPxX(data.tx1), toPxY(data.ty1)),
+                                                        end = androidx.compose.ui.geometry.Offset(toPxX(data.tx2), toPxY(data.ty2)),
+                                                        strokeWidth = 2f,
+                                                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
+                                                    )
+                                                }
+
+                                                if (data.hasNormal) {
+                                                    drawLine(
+                                                        color = Color.Magenta,
+                                                        start = androidx.compose.ui.geometry.Offset(toPxX(vp.minX), toPxY(data.ny1)),
+                                                        end = androidx.compose.ui.geometry.Offset(toPxX(vp.maxX), toPxY(data.ny2)),
+                                                        strokeWidth = 2f,
+                                                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
+                                                    )
                                                 }
                                             }
                                         }
@@ -1339,12 +1518,7 @@ fun GraphPlotterScreen(
 
                                             // Draw text coordinate floating banner
                                             val text = "(${String.format(java.util.Locale.US, "%.3f", selX)}, ${String.format(java.util.Locale.US, "%.3f", selY)})"
-                                            val bannerPaint = android.graphics.Paint().apply {
-                                                color = TextColor.toArgb()
-                                                textSize = 30f
-                                                isAntiAlias = true
-                                                typeface = android.graphics.Typeface.DEFAULT_BOLD
-                                            }
+                                            val bannerPaint = landscapeBannerPaint
                                             val textWidth = bannerPaint.measureText(text)
                                             val bannerX = if (px + textWidth + 30f > W) px - textWidth - 30f else px + 15f
                                             val bannerY = if (py - 25f < 30f) py + 45f else py - 15f
@@ -2561,6 +2735,22 @@ fun GraphPlotterScreen(
                     val textColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     val primaryColor = MaterialTheme.colorScheme.primary
 
+                    val portraitPaint = remember(textColor) {
+                        android.graphics.Paint().apply {
+                            color = textColor.toArgb()
+                            textSize = 28f
+                            isAntiAlias = true
+                        }
+                    }
+                    val portraitLabelPaint = remember(textColor) {
+                        android.graphics.Paint().apply {
+                            color = textColor.toArgb()
+                            textSize = 32f
+                            typeface = android.graphics.Typeface.DEFAULT_BOLD
+                            isAntiAlias = true
+                        }
+                    }
+
                     val density = LocalDensity.current
                     val tickStrokePx = with(density) { 1.5.dp.toPx() }
                     val axisStrokePx = with(density) { 2.dp.toPx() }
@@ -2763,11 +2953,7 @@ fun GraphPlotterScreen(
                         )
 
                         // Labels and Ticks
-                        val paint = android.graphics.Paint().apply {
-                            color = textColor.toArgb()
-                            textSize = 28f
-                            isAntiAlias = true
-                        }
+                        val paint = portraitPaint
 
                         // X ticks and labels
                         var tickX = startX
@@ -2830,32 +3016,9 @@ fun GraphPlotterScreen(
                             )
                         }
 
-                        // Draw Shaded Area for Numerical Integration
+                        // Draw Shaded Area for Numerical Integration using precalculated path
                         state.shadedIntegration?.let { info ->
-                            if (info.expressionIndex in state.expressions.indices) {
-                                val expr = state.expressions[info.expressionIndex]
-                                val shadePath = Path()
-                                val steps = 200
-                                val step = (info.b - info.a) / steps
-                                val startPxX = toPxX(info.a)
-                                val zeroPxY = toPxY(0.0)
-
-                                shadePath.moveTo(startPxX, zeroPxY)
-
-                                for (i in 0..steps) {
-                                    val currX = info.a + i * step
-                                    val currY = viewModel.evaluateExpression(expr, currX)
-                                    if (currY != null && currY.isFinite()) {
-                                        val px = toPxX(currX)
-                                        val py = toPxY(currY)
-                                        shadePath.lineTo(px, py)
-                                    }
-                                }
-
-                                val endPxX = toPxX(info.b)
-                                shadePath.lineTo(endPxX, zeroPxY)
-                                shadePath.close()
-
+                            portraitShadePath?.let { shadePath ->
                                 drawPath(
                                     path = shadePath,
                                     color = (state.expressionColors[info.expressionIndex]?.let { androidx.compose.ui.graphics.Color(it) } ?: colors[info.expressionIndex % colors.size]).copy(alpha = 0.2f),
@@ -2958,15 +3121,11 @@ fun GraphPlotterScreen(
                         if (firstCartesian != null) {
                             val expr = firstCartesian.expr
                             
-                            // Riemann Sums
+                            // Riemann Sums using precalculated values
                             if (showRiemann) {
-                                val n = 20
-                                val dx = (maxX - minX) / n
-                                for (i in 0 until n) {
-                                    val rx = minX + i * dx + dx / 2.0
-                                    val ry = viewModel.evaluateExpression(expr, rx) ?: 0.0
-                                    val rpx1 = toPxX(minX + i * dx)
-                                    val rpx2 = toPxX(minX + (i + 1) * dx)
+                                riemannRects.forEach { (xStart, xEnd, ry) ->
+                                    val rpx1 = toPxX(xStart)
+                                    val rpx2 = toPxX(xEnd)
                                     val rpy = toPxY(ry)
                                     val zeroY = toPxY(0.0)
                                     
@@ -2984,15 +3143,10 @@ fun GraphPlotterScreen(
                                 }
                             }
 
-                            // Animated Point Visuals
-                            val tLoop = (state.animationTime % 10f) / 10f
-                            val animX = minX + tLoop * (maxX - minX)
-                            val animY = viewModel.evaluateExpression(expr, animX)
-                            
-                            if (animY != null && animY.isFinite()) {
-                                val apx = toPxX(animX)
-                                val apy = toPxY(animY)
-                                
+                            // Animated Point Visuals using precalculated values
+                            animatedPointData?.let { data ->
+                                val apx = toPxX(data.animX)
+                                val apy = toPxY(data.animY)
                                 if (apx in 0f..W && apy in 0f..H) {
                                     if (showAnimatedPoint && state.isAnimating) {
                                         drawCircle(
@@ -3007,33 +3161,24 @@ fun GraphPlotterScreen(
                                         )
                                     }
 
-                                    val slope = viewModel.getDerivativeAt(expr, animX)
-                                    if (slope != null && slope.isFinite()) {
-                                        if (showTangent) {
-                                            val tx1 = minX
-                                            val ty1 = slope * (tx1 - animX) + animY
-                                            val tx2 = maxX
-                                            val ty2 = slope * (tx2 - animX) + animY
-                                            drawLine(
-                                                color = Color.Green,
-                                                start = androidx.compose.ui.geometry.Offset(toPxX(tx1), toPxY(ty1)),
-                                                end = androidx.compose.ui.geometry.Offset(toPxX(tx2), toPxY(ty2)),
-                                                strokeWidth = 2f,
-                                                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
-                                            )
-                                        }
-                                        if (showNormal) {
-                                            val nSlope = if (Math.abs(slope) < 1e-9) 1e9 else -1.0 / slope
-                                            val ny1 = nSlope * (minX - animX) + animY
-                                            val ny2 = nSlope * (maxX - animX) + animY
-                                            drawLine(
-                                                color = Color.Magenta,
-                                                start = androidx.compose.ui.geometry.Offset(toPxX(minX), toPxY(ny1)),
-                                                end = androidx.compose.ui.geometry.Offset(toPxX(maxX), toPxY(ny2)),
-                                                strokeWidth = 2f,
-                                                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
-                                            )
-                                        }
+                                    if (data.hasTangent) {
+                                        drawLine(
+                                            color = Color.Green,
+                                            start = androidx.compose.ui.geometry.Offset(toPxX(data.tx1), toPxY(data.ty1)),
+                                            end = androidx.compose.ui.geometry.Offset(toPxX(data.tx2), toPxY(data.ty2)),
+                                            strokeWidth = 2f,
+                                            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
+                                        )
+                                    }
+
+                                    if (data.hasNormal) {
+                                        drawLine(
+                                            color = Color.Magenta,
+                                            start = androidx.compose.ui.geometry.Offset(toPxX(minX), toPxY(data.ny1)),
+                                            end = androidx.compose.ui.geometry.Offset(toPxX(maxX), toPxY(data.ny2)),
+                                            strokeWidth = 2f,
+                                            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
+                                        )
                                     }
                                 }
                             }
@@ -3062,43 +3207,32 @@ fun GraphPlotterScreen(
                                     pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
                                 )
 
-                                // Draw tangent and normal lines on the graph canvas if an expression is selected
-                                val selExpr = state.selectedExpressionIndex?.let { state.expressions.getOrNull(it) }
-                                if (selExpr != null) {
-                                    val slope = viewModel.getDerivativeAt(selExpr, selX)
-                                    if (slope != null && !slope.isNaN() && !slope.isInfinite()) {
-                                        // Tangent Line
-                                        val txStart = state.viewport.minX
-                                        val tyStart = slope * (txStart - selX) + selY
-                                        val txEnd = state.viewport.maxX
-                                        val tyEnd = slope * (txEnd - selX) + selY
-
+                                // Draw tangent and normal lines on the graph canvas if an expression is selected using precalculated values
+                                selectedPointData?.let { data ->
+                                    if (data.hasTangent) {
                                         drawLine(
                                             color = Color(0xFF4CAF50), // Green for Tangent
-                                            start = androidx.compose.ui.geometry.Offset(toPxX(txStart), toPxY(tyStart)),
-                                            end = androidx.compose.ui.geometry.Offset(toPxX(txEnd), toPxY(tyEnd)),
+                                            start = androidx.compose.ui.geometry.Offset(toPxX(data.tx1), toPxY(data.ty1)),
+                                            end = androidx.compose.ui.geometry.Offset(toPxX(data.tx2), toPxY(data.ty2)),
                                             strokeWidth = traceLineStrokePx * 1.5f,
                                             pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
                                         )
+                                    }
 
-                                        // Normal Line
-                                        if (Math.abs(slope) < 1e-9) {
+                                    if (data.hasNormal) {
+                                        if (data.isNormalVertical) {
                                             drawLine(
                                                 color = Color(0xFFE91E63), // Pink for Normal
-                                                start = androidx.compose.ui.geometry.Offset(toPxX(selX), 0f),
-                                                end = androidx.compose.ui.geometry.Offset(toPxX(selX), H),
+                                                start = androidx.compose.ui.geometry.Offset(toPxX(data.selX), 0f),
+                                                end = androidx.compose.ui.geometry.Offset(toPxX(data.selX), H),
                                                 strokeWidth = traceLineStrokePx * 1.5f,
                                                 pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
                                             )
                                         } else {
-                                            val nSlope = -1.0 / slope
-                                            val nyStart = nSlope * (txStart - selX) + selY
-                                            val nyEnd = nSlope * (txEnd - selX) + selY
-
                                             drawLine(
                                                 color = Color(0xFFE91E63), // Pink for Normal
-                                                start = androidx.compose.ui.geometry.Offset(toPxX(txStart), toPxY(nyStart)),
-                                                end = androidx.compose.ui.geometry.Offset(toPxX(txEnd), toPxY(nyEnd)),
+                                                start = androidx.compose.ui.geometry.Offset(toPxX(data.tx1), toPxY(data.nyStart)),
+                                                end = androidx.compose.ui.geometry.Offset(toPxX(data.tx2), toPxY(data.nyEnd)),
                                                 strokeWidth = traceLineStrokePx * 1.5f,
                                                 pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
                                             )
@@ -3118,12 +3252,7 @@ fun GraphPlotterScreen(
                                 )
 
                                 val label = "(${formatLabel(selX, 1.0)}, ${formatLabel(selY, 1.0)})"
-                                val labelPaint = android.graphics.Paint().apply {
-                                    color = textColor.toArgb()
-                                    textSize = 32f
-                                    typeface = android.graphics.Typeface.DEFAULT_BOLD
-                                    isAntiAlias = true
-                                }
+                                val labelPaint = portraitLabelPaint
                                 val textY = if (py - 16f < 30f) py + 40f else py - 16f
                                 val textX = if (px + 16f > W - 180f) px - 220f else px + 16f
                                 drawContext.canvas.nativeCanvas.drawText(
