@@ -1,17 +1,19 @@
 # Codemagic configuration for My Calculator Android project
-# Detected project type: Native Android (Kotlin/Compose)
 
 workflows:
-  android-build:
-    name: Android Build
+  android-release:
+    name: Android Signed Release APK
     max_build_duration: 60
     instance_type: mac_mini_m2
+
     environment:
       java: 17
+
     scripts:
-      - name: Build Android debug APK
+      - name: Build Signed Release APK
         script: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
+
     artifacts:
-      - app/build/outputs/apk/debug/*.apk
+      - app/build/outputs/apk/release/*.apk
