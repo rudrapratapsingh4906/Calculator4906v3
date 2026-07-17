@@ -6,10 +6,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.draw.alpha
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +52,7 @@ import com.example.feature.datetimecalculator.DateTimeCalculatorViewModel
 import com.example.feature.datetimecalculator.ui.DateTimeCalculatorScreen
 import com.example.feature.mathscanner.ui.MathScannerScreen
 import com.example.feature.mathscanner.ui.MathScannerViewModel
+import com.example.feature.advancedfeatures.ui.AdvancedFeaturesScreen
 import com.example.feature.advancedfeatures.ui.GraphPlotterScreen
 import com.example.feature.advancedfeatures.ui.GraphPlotterViewModel
 import com.example.feature.advancedfeatures.ui.MatrixCalculatorScreen
@@ -131,7 +136,7 @@ class MainActivity : ComponentActivity() {
             )
             val screenStackState = rememberSaveable(saver = ScreenStackSaver) { mutableStateOf(listOf("calculator")) }
             var screenStack by screenStackState
-            val currentScreen = screenStack.last()
+            val currentScreen by remember { derivedStateOf { screenStack.last() } }
 
             val navigateTo = { screen: String ->
                 if (screenStack.last() != screen) {
@@ -169,7 +174,29 @@ class MainActivity : ComponentActivity() {
                         onNavigateToEquationSolver = { navigateTo("equation_solver") },
                         onNavigateToCalculus = { navigateTo("calculus") },
                         onNavigateToComplexCalculator = { navigateTo("complex_calculator") },
-                        onNavigateToStatistics = { navigateTo("statistics_calculator") }
+                        onNavigateToStatistics = { navigateTo("statistics_calculator") },
+                        onNavigateToAdvancedFeatures = { navigateTo("advanced_features") }
+                    )
+                } else if (currentScreen == "advanced_features") {
+                    AdvancedFeaturesScreen(
+                        onBack = { screenStack = screenStack.dropLast(1) },
+                        onNavigateToUnitConverter = { navigateTo("unit_converter") },
+                        onNavigateToPercentageCgpa = { navigateTo("percentage_cgpa") },
+                        onNavigateToEmiCalculator = { navigateTo("emi_calculator") },
+                        onNavigateToHealthCalculator = { navigateTo("health_calculator") },
+                        onNavigateToCurrencyConverter = { navigateTo("currency_calculator") },
+                        onNavigateToDateTimeCalculator = { navigateTo("datetime_calculator") },
+                        onNavigateToAgeCalculator = { navigateTo("age_calculator") },
+                        onNavigateToConstants = { navigateTo("scientific_constants") },
+                        onNavigateToCameraMathSolver = { navigateTo("math_scanner") },
+                        onNavigateToGraphPlotter = { navigateTo("graph_plotter") },
+                        onNavigateToMatrixCalculator = { navigateTo("matrix_calculator") },
+                        onNavigateToEquationSolver = { navigateTo("equation_solver") },
+                        onNavigateToCalculus = { navigateTo("calculus") },
+                        onNavigateToComplexCalculator = { navigateTo("complex_calculator") },
+                        onNavigateToStatistics = { navigateTo("statistics_calculator") },
+                        orientationLock = orientationLock,
+                        onOrientationLockChange = { /* implement or pass through */ }
                     )
                 } else if (currentScreen == "age_calculator") {
                     AgeCalculatorScreen(
@@ -217,10 +244,12 @@ class MainActivity : ComponentActivity() {
                         onBack = { screenStack = screenStack.dropLast(1) }
                     )
                 } else if (currentScreen == "graph_plotter") {
-                    GraphPlotterScreen(
-                        viewModel = graphViewModel,
-                        onBack = { screenStack = screenStack.dropLast(1) }
-                    )
+                    Box(modifier = Modifier.alpha(if (currentScreen == "graph_plotter") 1f else 0f)) {
+                        GraphPlotterScreen(
+                            viewModel = graphViewModel,
+                            onBack = { screenStack = screenStack.dropLast(1) }
+                        )
+                    }
                 } else if (currentScreen == "matrix_calculator") {
                     MatrixCalculatorScreen(
                         viewModel = matrixViewModel,

@@ -124,6 +124,7 @@ fun CalculatorScreen(
     onNavigateToCalculus: () -> Unit = {},
     onNavigateToComplexCalculator: () -> Unit = {},
     onNavigateToStatistics: () -> Unit = {},
+    onNavigateToAdvancedFeatures: () -> Unit = {},
     viewModel: CalculatorViewModel
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -224,7 +225,6 @@ fun CalculatorScreen(
     var showMenu by remember { mutableStateOf(false) }
     
     var showSettingsDialog by remember { mutableStateOf(false) }
-    var showAdvancedDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showVoiceDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
@@ -273,74 +273,6 @@ fun CalculatorScreen(
         }
     }
 
-    if (showAdvancedDialog) {
-        com.example.feature.advancedfeatures.ui.AdvancedFeaturesScreen(
-            onDismiss = { showAdvancedDialog = false },
-            onNavigateToUnitConverter = { 
-                showAdvancedDialog = false
-                onNavigateToUnitConverter()
-            },
-            onNavigateToPercentageCgpa = {
-                showAdvancedDialog = false
-                onNavigateToPercentageCgpa()
-            },
-            onNavigateToEmiCalculator = {
-                showAdvancedDialog = false
-                onNavigateToEmiCalculator()
-            },
-            onNavigateToHealthCalculator = {
-                showAdvancedDialog = false
-                onNavigateToHealthCalculator()
-            },
-            onNavigateToCurrencyConverter = {
-                showAdvancedDialog = false
-                onNavigateToCurrencyConverter()
-            },
-            onNavigateToDateTimeCalculator = {
-                showAdvancedDialog = false
-                onNavigateToDateTimeCalculator()
-            },
-            onNavigateToAgeCalculator = {
-                showAdvancedDialog = false
-                onNavigateToAgeCalculator()
-            },
-            onNavigateToConstants = {
-                showAdvancedDialog = false
-                onNavigateToConstants()
-            },
-            onNavigateToCameraMathSolver = {
-                showAdvancedDialog = false
-                onNavigateToMathScanner()
-            },
-            onNavigateToGraphPlotter = {
-                showAdvancedDialog = false
-                onNavigateToGraphPlotter()
-            },
-            onNavigateToMatrixCalculator = {
-                showAdvancedDialog = false
-                onNavigateToMatrixCalculator()
-            },
-            onNavigateToEquationSolver = {
-                showAdvancedDialog = false
-                onNavigateToEquationSolver()
-            },
-            onNavigateToCalculus = {
-                showAdvancedDialog = false
-                onNavigateToCalculus()
-            },
-            onNavigateToComplexCalculator = {
-                showAdvancedDialog = false
-                onNavigateToComplexCalculator()
-            },
-            onNavigateToStatistics = {
-                showAdvancedDialog = false
-                onNavigateToStatistics()
-            },
-            orientationLock = state.orientationLock,
-            onOrientationLockChange = { viewModel.onEvent(CalculatorEvent.SetOrientationLock(it)) }
-        )
-    }
-
 
     if (showVoiceDialog) {
         VoiceCalculatorDialog(
@@ -375,7 +307,7 @@ fun CalculatorScreen(
                             )
                             DropdownMenuItem(
                                 text = { Text("Advanced Features") },
-                                onClick = { showMenu = false; showAdvancedDialog = true }
+                                onClick = { showMenu = false; onNavigateToAdvancedFeatures() }
                             )
                             DropdownMenuItem(
                                 text = { Text("Theme Customization") },

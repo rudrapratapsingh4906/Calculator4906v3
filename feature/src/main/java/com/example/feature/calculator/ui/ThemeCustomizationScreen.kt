@@ -99,35 +99,43 @@ fun ThemeCustomizationScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
-                        onClick = { launcher.launch("image/*") },
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 48.dp)
-                            .testTag("select_background_button")
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Image,
-                            contentDescription = "Select Background Image"
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Select Image")
-                    }
-
-                    if (state.backgroundImageUri != null) {
-                        OutlinedButton(
-                            onClick = { onEvent(CalculatorEvent.SetBackgroundImageUri(null)) },
+                        Button(
+                            onClick = { launcher.launch("image/*") },
                             modifier = Modifier
+                                .fillMaxWidth()
                                 .heightIn(min = 48.dp)
-                                .testTag("remove_background_button"),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error
-                            )
+                                .testTag("select_background_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Remove Background"
+                                imageVector = Icons.Default.Image,
+                                contentDescription = "Select Background Image"
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Select Image")
+                        }
+
+                        if (state.backgroundImageUri != null) {
+                            OutlinedButton(
+                                onClick = { onEvent(CalculatorEvent.SetBackgroundImageUri(null)) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 48.dp)
+                                    .testTag("remove_background_button"),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Remove Background"
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Remove Background")
+                            }
                         }
                     }
                 }

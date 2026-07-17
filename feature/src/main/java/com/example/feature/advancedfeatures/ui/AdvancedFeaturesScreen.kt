@@ -20,8 +20,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 
 data class ConverterItem(
     val title: String,
@@ -34,7 +32,7 @@ data class ConverterItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdvancedFeaturesScreen(
-    onDismiss: () -> Unit,
+    onBack: () -> Unit,
     onNavigateToUnitConverter: () -> Unit,
     onNavigateToPercentageCgpa: () -> Unit,
     onNavigateToEmiCalculator: () -> Unit,
@@ -73,275 +71,98 @@ fun AdvancedFeaturesScreen(
 
     var showComingSoonDialog by remember { mutableStateOf<ConverterItem?>(null) }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Advanced Features") },
-                    navigationIcon = {
-                        IconButton(onClick = onDismiss) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Advanced Features") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                )
-            }
-        ) { paddingValues ->
-            Column(
+                }
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Card(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .verticalScroll(rememberScrollState())
+                    .fillMaxWidth()
+                    .padding(8.dp)
             ) {
-                // Settings
-                Card(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Lock Portrait Orientation",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Switch(
-                            checked = orientationLock,
-                            onCheckedChange = onOrientationLockChange
-                        )
-                    }
+                    Text("Lock Orientation", style = MaterialTheme.typography.titleMedium)
+                    Switch(checked = orientationLock, onCheckedChange = onOrientationLockChange)
                 }
+            }
 
-                Text(
-                    text = "Converters & Tools",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(8.dp)
+            ) {
+                items(converters) { converter ->
+                    Card(
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .clickable {
+                                if (converter.isImplemented) {
+                                    when (converter.route) {
+                                        "unit_converter" -> onNavigateToUnitConverter()
+                                        "percentage_cgpa" -> onNavigateToPercentageCgpa()
+                                        "emi_calculator" -> onNavigateToEmiCalculator()
+                                        "health_calculator" -> onNavigateToHealthCalculator()
+                                        "currency_calculator" -> onNavigateToCurrencyConverter()
+                                        "datetime_calculator" -> onNavigateToDateTimeCalculator()
+                                        "age_calculator" -> onNavigateToAgeCalculator()
+                                        "scientific_constants" -> onNavigateToConstants()
+                                        "math_scanner" -> onNavigateToCameraMathSolver()
+                                        "graph_plotter" -> onNavigateToGraphPlotter()
+                                        "matrix_calculator" -> onNavigateToMatrixCalculator()
+                                        "equation_solver" -> onNavigateToEquationSolver()
+                                        "calculus" -> onNavigateToCalculus()
+                                        "complex_calculator" -> onNavigateToComplexCalculator()
+                                        "statistics_calculator" -> onNavigateToStatistics()
+                                    }
+                                } else {
+                                    showComingSoonDialog = converter
+                                }
+                            }
                     ) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            ConverterCard(
-                                item = converters[0],
-                                onClick = onNavigateToUnitConverter,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        Box(modifier = Modifier.weight(1f)) {
-                            ConverterCard(
-                                item = converters[1],
-                                onClick = onNavigateToPercentageCgpa,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(converter.icon, contentDescription = null, modifier = Modifier.size(48.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(converter.title, textAlign = TextAlign.Center)
                         }
                     }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            ConverterCard(
-                                item = converters[2],
-                                onClick = onNavigateToEmiCalculator,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        Box(modifier = Modifier.weight(1f)) {
-                            ConverterCard(
-                                item = converters[3],
-                                onClick = onNavigateToHealthCalculator,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            ConverterCard(
-                                item = converters[4],
-                                onClick = onNavigateToCurrencyConverter,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        Box(modifier = Modifier.weight(1f)) {
-                            ConverterCard(
-                                item = converters[5],
-                                onClick = onNavigateToDateTimeCalculator,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            ConverterCard(
-                                item = converters[6],
-                                onClick = onNavigateToAgeCalculator,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        Box(modifier = Modifier.weight(1f)) {
-                            ConverterCard(
-                                item = converters[7],
-                                onClick = onNavigateToConstants,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            ConverterCard(
-                                item = converters[8],
-                                onClick = onNavigateToCameraMathSolver,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        Box(modifier = Modifier.weight(1f)) {
-                            ConverterCard(
-                                item = converters[9],
-                                onClick = onNavigateToGraphPlotter,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            ConverterCard(
-                                item = converters[10],
-                                onClick = onNavigateToMatrixCalculator,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        Box(modifier = Modifier.weight(1f)) {
-                            ConverterCard(
-                                item = converters[11],
-                                onClick = onNavigateToEquationSolver,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            ConverterCard(
-                                item = converters[12],
-                                onClick = onNavigateToCalculus,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        Box(modifier = Modifier.weight(1f)) {
-                            ConverterCard(
-                                item = converters[13],
-                                onClick = onNavigateToComplexCalculator,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            ConverterCard(
-                                item = converters[14],
-                                onClick = onNavigateToStatistics,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
     }
-
-    showComingSoonDialog?.let { item ->
+    
+    if (showComingSoonDialog != null) {
         AlertDialog(
             onDismissRequest = { showComingSoonDialog = null },
-            title = { Text(item.title) },
-            text = {
-                if (item.isCurrency) {
-                    Text("Coming Soon\nNo online APIs are enabled yet.")
-                } else {
-                    Text("Coming Soon")
-                }
-            },
+            title = { Text("Coming Soon") },
+            text = { Text("${showComingSoonDialog?.title} is not yet implemented.") },
             confirmButton = {
                 TextButton(onClick = { showComingSoonDialog = null }) {
                     Text("OK")
                 }
             }
         )
-    }
-}
-
-@Composable
-fun ConverterCard(
-    item: ConverterItem,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier
-            .aspectRatio(1.2f)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(32.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = item.icon,
-                contentDescription = item.title,
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = item.title,
-                textAlign = TextAlign.Center,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        }
     }
 }
