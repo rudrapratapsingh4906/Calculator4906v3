@@ -3,6 +3,7 @@ package com.example.feature.calculator
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
 import com.example.core.util.AppError
 import com.example.core.util.Result
 import com.example.domain.usecase.CalculateExpressionUseCase
@@ -82,6 +83,7 @@ class CalculatorViewModel(
         val endCoerced = end.coerceIn(0, expr.length)
         _state.update { it.copy(
             currentExpression = expr,
+            textFieldValue = TextFieldValue(text = expr, selection = TextRange(startCoerced, endCoerced)),
             cursorPosition = endCoerced,
             selectionStart = startCoerced,
             selectionEnd = endCoerced,
@@ -108,8 +110,24 @@ class CalculatorViewModel(
     }
 
     fun onEvent(event: CalculatorEvent) {
+        android.util.Log.d("CalculatorViewModel", "onEvent: $event")
         when (event) {
             is CalculatorEvent.UpdateExpression -> {
+                if (event.value.text == _state.value.currentExpression &&
+                    event.value.selection.start == _state.value.selectionStart &&
+                    event.value.selection.end == _state.value.selectionEnd) {
+                    // Selection might have changed, but text is same.
+                    // Actually, let's update if anything changed in TextFieldValue
+                    if (event.value.selection != _state.value.textFieldValue.selection) {
+                         _state.update { it.copy(
+                            textFieldValue = event.value,
+                            cursorPosition = event.value.selection.end,
+                            selectionStart = event.value.selection.start,
+                            selectionEnd = event.value.selection.end
+                        ) }
+                    }
+                    return
+                }
                 updateExpressionAndEvaluate(event.value.text, event.value.selection.start, event.value.selection.end)
             }
             is CalculatorEvent.InputChar -> {
@@ -222,6 +240,7 @@ class CalculatorViewModel(
             is CalculatorEvent.Clear -> {
                 _state.update { it.copy(
                     currentExpression = "",
+                    textFieldValue = TextFieldValue(),
                     result = "",
                     liveResult = "",
                     cursorPosition = 0,
@@ -262,6 +281,7 @@ class CalculatorViewModel(
                 val expr = event.calculation.expression
                 _state.update { it.copy(
                     currentExpression = expr,
+                    textFieldValue = TextFieldValue(text = expr, selection = TextRange(expr.length)),
                     result = event.calculation.result,
                     liveResult = event.calculation.result,
                     cursorPosition = expr.length,
@@ -308,7 +328,8 @@ class CalculatorViewModel(
                 _state.update { it.copy(
                     cursorPosition = pos,
                     selectionStart = pos,
-                    selectionEnd = pos
+                    selectionEnd = pos,
+                    textFieldValue = _state.value.textFieldValue.copy(selection = TextRange(pos))
                 ) }
             }
             is CalculatorEvent.SetSelection -> {
@@ -317,7 +338,8 @@ class CalculatorViewModel(
                 _state.update { it.copy(
                     cursorPosition = end,
                     selectionStart = start,
-                    selectionEnd = end
+                    selectionEnd = end,
+                    textFieldValue = _state.value.textFieldValue.copy(selection = TextRange(start, end))
                 ) }
             }
             is CalculatorEvent.DismissError -> {

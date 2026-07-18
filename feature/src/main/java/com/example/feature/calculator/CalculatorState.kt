@@ -2,8 +2,12 @@ package com.example.feature.calculator
 
 import com.example.domain.model.Calculation
 
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
+
 data class CalculatorState(
     val currentExpression: String = "",
+    val textFieldValue: TextFieldValue = TextFieldValue(),
     val result: String = "",
     val liveResult: String = "",
     val error: String? = null,

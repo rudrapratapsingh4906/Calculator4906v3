@@ -1,5 +1,6 @@
 package com.example.feature.calculator.ui
 
+import android.view.KeyEvent as NativeKeyEvent
 import android.util.Log
 import android.content.res.Configuration
 import android.net.Uri
@@ -74,12 +75,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.platform.LocalTextInputService
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -92,8 +89,23 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.OffsetMapping
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.platform.LocalTextInputService
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.appcompat.widget.AppCompatEditText
+import android.text.InputType
+import android.view.Gravity
+import android.text.TextWatcher
+import android.text.Editable
+import android.util.TypedValue
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -107,6 +119,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.feature.calculator.CalculatorEvent
 import com.example.feature.calculator.CalculatorState
 import com.example.feature.calculator.CalculatorViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -561,64 +574,21 @@ fun CalculatorDisplay(
     onEvent: (CalculatorEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val focusRequester = remember { FocusRequester() }
     val scrollState = rememberScrollState()
-
-    val noOpKeyboardController = remember {
-        object : SoftwareKeyboardController {
-            override fun show() {
-                Log.d("KeyboardDebug", "showSoftwareKeyboard requested - BLOCKING")
-            }
-            override fun hide() {
-                Log.d("KeyboardDebug", "hideSoftwareKeyboard")
-            }
-        }
-    }
-
-    val noOpTextInputService = remember {
-        TextInputService(object : PlatformTextInputService {
-            override fun startInput(
-                value: TextFieldValue,
-                imeOptions: ImeOptions,
-                onEditCommand: (List<EditCommand>) -> Unit,
-                onImeActionPerformed: (ImeAction) -> Unit
-            ) {
-                Log.d("KeyboardDebug", "startInput requested - BLOCKING")
-            }
-            override fun stopInput() {
-                Log.d("KeyboardDebug", "stopInput")
-            }
-            override fun showSoftwareKeyboard() {
-                Log.d("KeyboardDebug", "showSoftwareKeyboard requested - BLOCKING")
-            }
-            override fun hideSoftwareKeyboard() {
-                Log.d("KeyboardDebug", "hideSoftwareKeyboard")
-            }
-            override fun updateState(oldValue: TextFieldValue?, newValue: TextFieldValue) {}
-        })
-    }
+    val currentOnEvent by rememberUpdatedState(onEvent)
+    val currentTextFieldValue by rememberUpdatedState(state.textFieldValue)
 
     // Auto-scroll to the bottom when the expression updates
     LaunchedEffect(state.currentExpression) {
         scrollState.animateScrollTo(scrollState.maxValue)
     }
 
-    CompositionLocalProvider(
-        LocalTextInputService provides noOpTextInputService,
-        LocalSoftwareKeyboardController provides noOpKeyboardController
+    Column(
+        modifier = modifier
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.Bottom,
+        horizontalAlignment = Alignment.End
     ) {
-        Column(
-            modifier = modifier
-                .padding(horizontal = 16.dp)
-                .pointerInput(Unit) {
-                    detectTapGestures {
-                        Log.d("KeyboardDebug", "Display area tapped")
-                        focusRequester.requestFocus()
-                    }
-                },
-            verticalArrangement = Arrangement.Bottom,
-            horizontalAlignment = Alignment.End
-        ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -646,53 +616,132 @@ fun CalculatorDisplay(
         Spacer(modifier = Modifier.height(8.dp))
         
         // 1. Expression Area: Vertically scrollable, takes up remaining vertical space
-        // As expressions grow, they grow upward naturally.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f) // Fills the available space, pushing the result to the bottom
+                .weight(1f) 
                 .verticalScroll(scrollState),
             contentAlignment = Alignment.BottomEnd
         ) {
-            BasicTextField(
-                value = TextFieldValue(
-                    text = state.currentExpression,
-                    selection = TextRange(state.selectionStart, state.selectionEnd)
-                ),
-                onValueChange = { newValue ->
-                    onEvent(CalculatorEvent.UpdateExpression(newValue))
-                },
-                textStyle = TextStyle(
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
-                    fontSize = 28.sp,
-                    textAlign = TextAlign.End,
-                    fontWeight = FontWeight.Normal,
-                    lineHeight = 36.sp
-                ),
+            val textColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f).toArgb()
+            
+            AndroidView(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .focusRequester(focusRequester)
-                    .onFocusChanged {
-                        Log.d("KeyboardDebug", "Focus changed: isFocused=${it.isFocused}")
-                    },
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                singleLine = false,
-                readOnly = false,
-                keyboardOptions = KeyboardOptions(
-                    imeAction = ImeAction.None,
-                    keyboardType = KeyboardType.Text
-                ),
-                visualTransformation = VisualTransformation.None
+                    .padding(vertical = 4.dp),
+                factory = { context ->
+                    val editText = object : AppCompatEditText(context) {
+                        override fun onSelectionChanged(selStart: Int, selEnd: Int) {
+                            super.onSelectionChanged(selStart, selEnd)
+                            if (selStart != currentTextFieldValue.selection.start || 
+                                selEnd != currentTextFieldValue.selection.end) {
+                                currentOnEvent(CalculatorEvent.UpdateExpression(
+                                    currentTextFieldValue.copy(selection = TextRange(selStart, selEnd))
+                                ))
+                            }
+                        }
+                    }
+                    editText.apply {
+                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                        setTextColor(textColor)
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 28f)
+                        gravity = Gravity.END or Gravity.BOTTOM
+                        inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                        setShowSoftInputOnFocus(false) // Core requirement: Prevent Gboard
+                        setPadding(0, 0, 0, 0)
+                        isFocusableInTouchMode = true
+                        
+                        addTextChangedListener(object : TextWatcher {
+                            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                            override fun afterTextChanged(s: Editable?) {
+                                val newText = s?.toString() ?: ""
+                                if (newText != currentTextFieldValue.text) {
+                                    currentOnEvent(CalculatorEvent.UpdateExpression(
+                                        currentTextFieldValue.copy(
+                                            text = newText,
+                                            selection = TextRange(selectionStart, selectionEnd)
+                                        )
+                                    ))
+                                }
+                            }
+                        })
+                        
+                        // Handle hardware keyboard input
+                        setOnKeyListener { _, keyCode, event ->
+                            if (event.action == NativeKeyEvent.ACTION_DOWN) {
+                                val char = when (keyCode) {
+                                    NativeKeyEvent.KEYCODE_0, NativeKeyEvent.KEYCODE_NUMPAD_0 -> '0'
+                                    NativeKeyEvent.KEYCODE_1, NativeKeyEvent.KEYCODE_NUMPAD_1 -> '1'
+                                    NativeKeyEvent.KEYCODE_2, NativeKeyEvent.KEYCODE_NUMPAD_2 -> '2'
+                                    NativeKeyEvent.KEYCODE_3, NativeKeyEvent.KEYCODE_NUMPAD_3 -> '3'
+                                    NativeKeyEvent.KEYCODE_4, NativeKeyEvent.KEYCODE_NUMPAD_4 -> '4'
+                                    NativeKeyEvent.KEYCODE_5, NativeKeyEvent.KEYCODE_NUMPAD_5 -> '5'
+                                    NativeKeyEvent.KEYCODE_6, NativeKeyEvent.KEYCODE_NUMPAD_6 -> '6'
+                                    NativeKeyEvent.KEYCODE_7, NativeKeyEvent.KEYCODE_NUMPAD_7 -> '7'
+                                    NativeKeyEvent.KEYCODE_8, NativeKeyEvent.KEYCODE_NUMPAD_8 -> '8'
+                                    NativeKeyEvent.KEYCODE_9, NativeKeyEvent.KEYCODE_NUMPAD_9 -> '9'
+                                    NativeKeyEvent.KEYCODE_PLUS, NativeKeyEvent.KEYCODE_NUMPAD_ADD -> '+'
+                                    NativeKeyEvent.KEYCODE_MINUS, NativeKeyEvent.KEYCODE_NUMPAD_SUBTRACT -> '-'
+                                    NativeKeyEvent.KEYCODE_STAR, NativeKeyEvent.KEYCODE_NUMPAD_MULTIPLY -> '×'
+                                    NativeKeyEvent.KEYCODE_SLASH, NativeKeyEvent.KEYCODE_NUMPAD_DIVIDE -> '÷'
+                                    NativeKeyEvent.KEYCODE_PERIOD, NativeKeyEvent.KEYCODE_NUMPAD_DOT -> '.'
+                                    NativeKeyEvent.KEYCODE_EQUALS -> if (event.isShiftPressed) '+' else null
+                                    else -> null
+                                }
+                                
+                                if (char != null) {
+                                    currentOnEvent(CalculatorEvent.InputChar(char))
+                                    return@setOnKeyListener true
+                                }
+                                
+                                when (keyCode) {
+                                    NativeKeyEvent.KEYCODE_DEL -> {
+                                        currentOnEvent(CalculatorEvent.DeleteLast)
+                                        true
+                                    }
+                                    NativeKeyEvent.KEYCODE_ENTER, NativeKeyEvent.KEYCODE_NUMPAD_ENTER, NativeKeyEvent.KEYCODE_EQUALS -> {
+                                        if (keyCode == NativeKeyEvent.KEYCODE_EQUALS && event.isShiftPressed) {
+                                            false
+                                        } else {
+                                            currentOnEvent(CalculatorEvent.Calculate)
+                                            true
+                                        }
+                                    }
+                                    NativeKeyEvent.KEYCODE_ESCAPE -> {
+                                        currentOnEvent(CalculatorEvent.Clear)
+                                        true
+                                    }
+                                    else -> false
+                                }
+                            } else {
+                                false
+                            }
+                        }
+                    }
+                    editText
+                },
+                update = { editText ->
+                    val text = state.textFieldValue.text
+                    val selection = state.textFieldValue.selection
+                    
+                    if (editText.text.toString() != text) {
+                        editText.setText(text)
+                        editText.setSelection(selection.start.coerceIn(0, text.length), selection.end.coerceIn(0, text.length))
+                    } else if (editText.selectionStart != selection.start || editText.selectionEnd != selection.end) {
+                        editText.setSelection(selection.start.coerceIn(0, text.length), selection.end.coerceIn(0, text.length))
+                    }
+                }
             )
         }
-        
+
         // Fixed Spacing/Separator between Expression and Result
         Spacer(modifier = Modifier.height(12.dp))
-        
+
         // 2. Result Area: Fixed at the bottom of the display, never overlaps or jumps.
         val rawResult = if (state.result.isNotEmpty()) state.result else state.liveResult
         val resultText = if (rawResult.isNotEmpty()) "= $rawResult" else ""
-        
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -712,11 +761,11 @@ fun CalculatorDisplay(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(8.dp))
     }
-    }
 }
+
 @Composable
 fun CalculatorButtonGrid(
     onEvent: (CalculatorEvent) -> Unit,

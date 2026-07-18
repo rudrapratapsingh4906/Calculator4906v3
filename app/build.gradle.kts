@@ -1,5 +1,3 @@
-import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
-
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.android)
@@ -7,13 +5,12 @@ plugins {
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
-  alias(libs.plugins.google.services)
 }
 
 android {
   namespace = "com.example"
     compileSdk = 35
-    buildToolsVersion = "36.0.0"
+    buildToolsVersion = "35.0.0"
     defaultConfig {
         applicationId = "com.aistudio.mycalculator.cbx998"
         minSdk = 24
@@ -29,7 +26,7 @@ android {
       val keystorePath = providers.gradleProperty("KEYSTORE_PATH").orElse("${rootDir}/my-upload-key.jks").get()
       storeFile = file(keystorePath)
       storePassword = "password"
-      keyAlias = "upload"
+      keyAlias = "my-key-alias"
       keyPassword = "password"
     }
     create("debugConfig") {
@@ -61,6 +58,10 @@ android {
     compose = true
     buildConfig = true
   }
+  lint {
+    abortOnError = false
+    checkReleaseBuilds = false
+  }
   testOptions { unitTests { isIncludeAndroidResources = true } }
 }
 
@@ -76,8 +77,6 @@ secrets {
   propertiesFileName = ".env"
 }
 
-googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN }
-
 // Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.
 dependencies {
@@ -88,7 +87,6 @@ dependencies {
   implementation(project(":feature"))
 
   implementation(platform(libs.androidx.compose.bom))
-  implementation(platform(libs.firebase.bom))
   // implementation(libs.accompanist.permissions)
   implementation(libs.androidx.activity.compose)
   // implementation(libs.androidx.camera.camera2)

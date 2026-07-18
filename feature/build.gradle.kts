@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.example.feature"
     compileSdk = 35
-    buildToolsVersion = "36.0.0"
+    buildToolsVersion = "35.0.0"
 
     defaultConfig {
         minSdk = 24
@@ -50,6 +50,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.appcompat)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
