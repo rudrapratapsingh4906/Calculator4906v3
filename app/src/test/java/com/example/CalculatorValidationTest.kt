@@ -55,6 +55,10 @@ class FakeSettingsRepository : SettingsRepository {
     override val orientationLockFlow = MutableStateFlow(false)
     override val backgroundImageUriFlow = MutableStateFlow<String?>(null)
     override val backgroundOpacityFlow = MutableStateFlow(1.0f)
+    override val advancedVoiceModeEnabledFlow = MutableStateFlow(false)
+    override val voiceAutoStartEnabledFlow = MutableStateFlow(false)
+    override val continuousListeningEnabledFlow = MutableStateFlow(false)
+
     override fun setTheme(theme: String) { themeFlow.value = theme }
     override fun setThemeMode(themeMode: String) { themeModeFlow.value = themeMode }
     override fun setVibrationEnabled(enabled: Boolean) { vibrationEnabledFlow.value = enabled }
@@ -62,6 +66,9 @@ class FakeSettingsRepository : SettingsRepository {
     override fun setOrientationLock(locked: Boolean) { orientationLockFlow.value = locked }
     override fun setBackgroundImageUri(uri: String?) { backgroundImageUriFlow.value = uri }
     override fun setBackgroundOpacity(opacity: Float) { backgroundOpacityFlow.value = opacity }
+    override fun setAdvancedVoiceModeEnabled(enabled: Boolean) { advancedVoiceModeEnabledFlow.value = enabled }
+    override fun setVoiceAutoStartEnabled(enabled: Boolean) { voiceAutoStartEnabledFlow.value = enabled }
+    override fun setContinuousListeningEnabled(enabled: Boolean) { continuousListeningEnabledFlow.value = enabled }
 }
 
 class FakeCalculationRepository : CalculationRepository {

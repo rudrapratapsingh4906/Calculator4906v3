@@ -28,9 +28,9 @@ android {
     create("release") {
       val keystorePath = providers.gradleProperty("KEYSTORE_PATH").orElse("${rootDir}/my-upload-key.jks").get()
       storeFile = file(keystorePath)
-      storePassword = providers.gradleProperty("STORE_PASSWORD").orNull
+      storePassword = "password"
       keyAlias = "upload"
-      keyPassword = providers.gradleProperty("KEY_PASSWORD").orNull
+      keyPassword = "password"
     }
     create("debugConfig") {
       storeFile = file("${rootDir}/debug.keystore")

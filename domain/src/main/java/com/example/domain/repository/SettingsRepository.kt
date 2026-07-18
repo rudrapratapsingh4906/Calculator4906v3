@@ -10,6 +10,9 @@ interface SettingsRepository {
     val orientationLockFlow: StateFlow<Boolean>
     val backgroundImageUriFlow: StateFlow<String?>
     val backgroundOpacityFlow: StateFlow<Float>
+    val advancedVoiceModeEnabledFlow: StateFlow<Boolean>
+    val voiceAutoStartEnabledFlow: StateFlow<Boolean>
+    val continuousListeningEnabledFlow: StateFlow<Boolean>
     fun setTheme(theme: String)
     fun setThemeMode(themeMode: String)
     fun setVibrationEnabled(enabled: Boolean)
@@ -17,4 +20,7 @@ interface SettingsRepository {
     fun setOrientationLock(locked: Boolean)
     fun setBackgroundImageUri(uri: String?)
     fun setBackgroundOpacity(opacity: Float)
+    fun setAdvancedVoiceModeEnabled(enabled: Boolean)
+    fun setVoiceAutoStartEnabled(enabled: Boolean)
+    fun setContinuousListeningEnabled(enabled: Boolean)
 }

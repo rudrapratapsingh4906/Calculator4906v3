@@ -44,14 +44,17 @@ object TextUnderstandingEngine {
                 lowerText.contains("topic") -> "topic_practice"
                 else -> "general_practice"
             }
-        } else if (lowerText.contains("hint") || lowerText.contains("next step") || lowerText.contains("mistake") || lowerText.contains("tutor") || lowerText.contains("formula") || lowerText.contains("theorem")) {
+        } else if (lowerText.contains("hint") || lowerText.contains("next step") || lowerText.contains("mistake") || lowerText.contains("tutor") || lowerText.contains("formula") || lowerText.contains("theorem") ||
+                   lowerText.contains("charan") || lowerText.contains("sutra") || lowerText.contains("ishara") || lowerText.contains("kyun") || lowerText.contains("kyon") || lowerText.contains("tareeka") || lowerText.contains("vidhi") || lowerText.contains("answer")) {
             intent = MathIntent.TUTOR
             command = when {
-                lowerText.contains("hint") -> "hint"
-                lowerText.contains("next step") -> "next_step"
+                lowerText.contains("hint") || lowerText.contains("ishara") || lowerText.contains("isara") -> "hint"
+                lowerText.contains("next step") || lowerText.contains("charan") || lowerText.contains("step") -> "next_step"
                 lowerText.contains("mistake") -> "mistake"
-                lowerText.contains("formula") -> "formula"
-                lowerText.contains("theorem") -> "theorem"
+                lowerText.contains("formula") || lowerText.contains("sutra") || lowerText.contains("sutr") -> "formula"
+                lowerText.contains("theorem") || lowerText.contains("kyun") || lowerText.contains("kyon") || lowerText.contains("why") || lowerText.contains("samjhao") -> "explain_why"
+                lowerText.contains("another method") || lowerText.contains("dusra") || lowerText.contains("doosra") || lowerText.contains("vidhi") || lowerText.contains("tareeka") -> "another_method"
+                lowerText.contains("answer only") || lowerText.contains("sirf answer") || lowerText.contains("answer") -> "answer_only"
                 else -> "tutor"
             }
         } else if (lowerText.contains("matrix") || lowerText.contains("determinant") || lowerText.contains("inverse") || lowerText.contains("transpose")) {
@@ -85,9 +88,9 @@ object TextUnderstandingEngine {
         } else if (lowerText.contains("area") || lowerText.contains("volume") || lowerText.contains("perimeter") || lowerText.contains("triangle") || lowerText.contains("circle") || lowerText.contains("rectangle") || lowerText.contains("geometry")) {
             category = MathCategory.GEOMETRY
             intent = MathIntent.SOLVE
-        } else if (lowerText.contains("simplify") || lowerText.contains("reduce") || lowerText.contains("expand") || lowerText.contains("factor")) {
+        } else if (lowerText.contains("simplify") || lowerText.contains("reduce") || lowerText.contains("expand") || lowerText.contains("factor") || lowerText.contains("gunankhand") || lowerText.contains("saral")) {
             intent = MathIntent.SIMPLIFY
-            command = "simplify"
+            command = if (lowerText.contains("factor") || lowerText.contains("gunankhand")) "factor" else "simplify"
             category = MathCategory.ALGEBRA
         } else if (lowerText.contains("logarithm") || lowerText.contains("log ") || lowerText.contains("ln ")) {
             intent = MathIntent.EVALUATE

@@ -44,7 +44,6 @@ fun AdvancedFeaturesScreen(
     onNavigateToCameraMathSolver: () -> Unit,
     onNavigateToGraphPlotter: () -> Unit,
     onNavigateToMatrixCalculator: () -> Unit,
-    onNavigateToEquationSolver: () -> Unit,
     onNavigateToCalculus: () -> Unit,
     onNavigateToComplexCalculator: () -> Unit,
     onNavigateToStatistics: () -> Unit,
@@ -63,7 +62,6 @@ fun AdvancedFeaturesScreen(
         ConverterItem("Camera Math Solver", Icons.Default.CameraAlt, true, false, "math_scanner"),
         ConverterItem("Graph Plotter", Icons.Default.ShowChart, true, false, "graph_plotter"),
         ConverterItem("Matrix Calculator", Icons.Default.Grid3x3, true, false, "matrix_calculator"),
-        ConverterItem("Equation Solver", Icons.Default.Calculate, true, false, "equation_solver"),
         ConverterItem("Calculus", Icons.Default.Functions, true, false, "calculus"),
         ConverterItem("Complex Calculator", Icons.Default.Grid4x4, true, false, "complex_calculator"),
         ConverterItem("Statistics", Icons.Default.Equalizer, true, false, "statistics_calculator")
@@ -129,7 +127,6 @@ fun AdvancedFeaturesScreen(
                                         "math_scanner" -> onNavigateToCameraMathSolver()
                                         "graph_plotter" -> onNavigateToGraphPlotter()
                                         "matrix_calculator" -> onNavigateToMatrixCalculator()
-                                        "equation_solver" -> onNavigateToEquationSolver()
                                         "calculus" -> onNavigateToCalculus()
                                         "complex_calculator" -> onNavigateToComplexCalculator()
                                         "statistics_calculator" -> onNavigateToStatistics()

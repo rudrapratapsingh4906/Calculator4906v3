@@ -7,6 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -57,8 +58,6 @@ import com.example.feature.advancedfeatures.ui.GraphPlotterScreen
 import com.example.feature.advancedfeatures.ui.GraphPlotterViewModel
 import com.example.feature.advancedfeatures.ui.MatrixCalculatorScreen
 import com.example.feature.advancedfeatures.ui.MatrixCalculatorViewModel
-import com.example.feature.advancedfeatures.ui.EquationSolverScreen
-import com.example.feature.advancedfeatures.ui.EquationSolverViewModel
 import com.example.feature.advancedfeatures.ui.CalculusScreen
 import com.example.feature.advancedfeatures.ui.CalculusViewModel
 import com.example.feature.advancedfeatures.ui.ComplexCalculatorScreen
@@ -67,7 +66,6 @@ import com.example.feature.advancedfeatures.ui.StatisticsScreen
 import com.example.feature.advancedfeatures.ui.StatisticsViewModel
 import com.example.domain.usecase.PlotGraphUseCase
 import com.example.domain.usecase.MatrixOperationsUseCase
-import com.example.domain.usecase.SolveEquationUseCase
 import com.example.domain.usecase.CalculusUseCase
 import com.example.domain.usecase.ComplexUseCase
 import com.example.domain.usecase.StatisticsUseCase
@@ -75,6 +73,15 @@ import com.example.data.repository.GraphRepositoryImpl
 import com.example.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import com.example.feature.calculator.ui.VoiceAITutorDialog
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
+import androidx.compose.material3.MaterialTheme
 
 class MainActivity : ComponentActivity() {
     private val db by lazy { AppDatabase.getInstance(applicationContext) }
@@ -88,6 +95,8 @@ class MainActivity : ComponentActivity() {
         }
     }
     private val repository by lazy { CalculationRepositoryImpl(db.calculationDao, dispatcherProvider) }
+    private val voiceCommandRepository by lazy { com.example.data.repository.VoiceCommandRepositoryImpl(db.voiceCommandDao) }
+    private val voiceHistoryRepository by lazy { com.example.data.repository.VoiceHistoryRepositoryImpl(db.voiceHistoryDao) }
     private val calculateUseCase by lazy { CalculateExpressionUseCaseImpl(com.example.domain.math.CalculatorEngine(), repository) }
     private val getHistoryUseCase by lazy { GetHistoryUseCase(repository) }
     private val clearHistoryUseCase by lazy { ClearHistoryUseCase(repository) }
@@ -116,7 +125,6 @@ class MainActivity : ComponentActivity() {
     private val mathScannerViewModel by lazy { MathScannerViewModel() }
     private val graphViewModel by lazy { GraphPlotterViewModel(PlotGraphUseCase(GraphRepositoryImpl(applicationContext)), com.example.domain.math.CalculatorEngine()) }
     private val matrixViewModel by lazy { MatrixCalculatorViewModel(MatrixOperationsUseCase()) }
-    private val equationViewModel by lazy { EquationSolverViewModel(SolveEquationUseCase()) }
     private val calculusViewModel by lazy { CalculusViewModel(CalculusUseCase(com.example.domain.math.CalculatorEngine())) }
     private val complexViewModel by lazy { ComplexViewModel(ComplexUseCase()) }
     private val statisticsViewModel by lazy { StatisticsViewModel(StatisticsUseCase()) }
@@ -138,6 +146,9 @@ class MainActivity : ComponentActivity() {
             var screenStack by screenStackState
             val currentScreen by remember { derivedStateOf { screenStack.last() } }
 
+            var showVoiceTutorDialog by rememberSaveable { mutableStateOf(false) }
+            var parentShowSettingsDialog by rememberSaveable { mutableStateOf(false) }
+
             val navigateTo = { screen: String ->
                 if (screenStack.last() != screen) {
                     screenStack = screenStack + screen
@@ -157,27 +168,46 @@ class MainActivity : ComponentActivity() {
             }
 
             MyApplicationTheme(themeName = theme) {
-                if (currentScreen == "calculator") {
-                    CalculatorScreen(
-                        viewModel = viewModel,
-                        onNavigateToAgeCalculator = { navigateTo("age_calculator") },
-                        onNavigateToUnitConverter = { navigateTo("unit_converter") },
-                        onNavigateToConstants = { navigateTo("scientific_constants") },
-                        onNavigateToPercentageCgpa = { navigateTo("percentage_cgpa") },
-                        onNavigateToEmiCalculator = { navigateTo("emi_calculator") },
-                        onNavigateToHealthCalculator = { navigateTo("health_calculator") },
-                        onNavigateToCurrencyConverter = { navigateTo("currency_calculator") },
-                        onNavigateToDateTimeCalculator = { navigateTo("datetime_calculator") },
-                        onNavigateToMathScanner = { navigateTo("math_scanner") },
-                        onNavigateToGraphPlotter = { navigateTo("graph_plotter") },
-                        onNavigateToMatrixCalculator = { navigateTo("matrix_calculator") },
-                        onNavigateToEquationSolver = { navigateTo("equation_solver") },
-                        onNavigateToCalculus = { navigateTo("calculus") },
-                        onNavigateToComplexCalculator = { navigateTo("complex_calculator") },
-                        onNavigateToStatistics = { navigateTo("statistics_calculator") },
-                        onNavigateToAdvancedFeatures = { navigateTo("advanced_features") }
-                    )
-                } else if (currentScreen == "advanced_features") {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (showVoiceTutorDialog) {
+                        VoiceAITutorDialog(
+                            onDismissRequest = { showVoiceTutorDialog = false },
+                            currentScreen = currentScreen,
+                            onNavigateTo = { target -> navigateTo(target) },
+                            onEvent = viewModel::onEvent,
+                            onOpenSettings = { parentShowSettingsDialog = true },
+                            graphViewModel = graphViewModel,
+                            matrixViewModel = matrixViewModel,
+                            mathScannerViewModel = mathScannerViewModel,
+                            voiceCommandRepository = voiceCommandRepository,
+                            settingsRepository = settingsRepository,
+                            voiceHistoryRepository = voiceHistoryRepository
+                        )
+                    }
+
+                    if (currentScreen == "calculator") {
+                        CalculatorScreen(
+                            viewModel = viewModel,
+                            onNavigateToAgeCalculator = { navigateTo("age_calculator") },
+                            onNavigateToUnitConverter = { navigateTo("unit_converter") },
+                            onNavigateToConstants = { navigateTo("scientific_constants") },
+                            onNavigateToPercentageCgpa = { navigateTo("percentage_cgpa") },
+                            onNavigateToEmiCalculator = { navigateTo("emi_calculator") },
+                            onNavigateToHealthCalculator = { navigateTo("health_calculator") },
+                            onNavigateToCurrencyConverter = { navigateTo("currency_calculator") },
+                            onNavigateToDateTimeCalculator = { navigateTo("datetime_calculator") },
+                            onNavigateToMathScanner = { navigateTo("math_scanner") },
+                            onNavigateToGraphPlotter = { navigateTo("graph_plotter") },
+                            onNavigateToMatrixCalculator = { navigateTo("matrix_calculator") },
+                            onNavigateToCalculus = { navigateTo("calculus") },
+                            onNavigateToComplexCalculator = { navigateTo("complex_calculator") },
+                            onNavigateToStatistics = { navigateTo("statistics_calculator") },
+                            onNavigateToAdvancedFeatures = { navigateTo("advanced_features") },
+                            onOpenVoiceTutor = { showVoiceTutorDialog = true },
+                            showSettingsDialogFromParent = parentShowSettingsDialog,
+                            onSettingsHandled = { parentShowSettingsDialog = false }
+                        )
+                    } else if (currentScreen == "advanced_features") {
                     AdvancedFeaturesScreen(
                         onBack = { screenStack = screenStack.dropLast(1) },
                         onNavigateToUnitConverter = { navigateTo("unit_converter") },
@@ -191,7 +221,6 @@ class MainActivity : ComponentActivity() {
                         onNavigateToCameraMathSolver = { navigateTo("math_scanner") },
                         onNavigateToGraphPlotter = { navigateTo("graph_plotter") },
                         onNavigateToMatrixCalculator = { navigateTo("matrix_calculator") },
-                        onNavigateToEquationSolver = { navigateTo("equation_solver") },
                         onNavigateToCalculus = { navigateTo("calculus") },
                         onNavigateToComplexCalculator = { navigateTo("complex_calculator") },
                         onNavigateToStatistics = { navigateTo("statistics_calculator") },
@@ -255,11 +284,6 @@ class MainActivity : ComponentActivity() {
                         viewModel = matrixViewModel,
                         onBack = { screenStack = screenStack.dropLast(1) }
                     )
-                } else if (currentScreen == "equation_solver") {
-                    EquationSolverScreen(
-                        viewModel = equationViewModel,
-                        onBack = { screenStack = screenStack.dropLast(1) }
-                    )
                 } else if (currentScreen == "calculus") {
                     CalculusScreen(
                         viewModel = calculusViewModel,
@@ -277,6 +301,7 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
         }
     }
 }

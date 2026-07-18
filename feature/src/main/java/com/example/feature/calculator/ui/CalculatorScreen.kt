@@ -39,6 +39,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -98,6 +99,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.TextUnit
@@ -120,11 +122,13 @@ fun CalculatorScreen(
     onNavigateToMathScanner: () -> Unit = {},
     onNavigateToGraphPlotter: () -> Unit = {},
     onNavigateToMatrixCalculator: () -> Unit = {},
-    onNavigateToEquationSolver: () -> Unit = {},
     onNavigateToCalculus: () -> Unit = {},
     onNavigateToComplexCalculator: () -> Unit = {},
     onNavigateToStatistics: () -> Unit = {},
     onNavigateToAdvancedFeatures: () -> Unit = {},
+    onOpenVoiceTutor: () -> Unit = {},
+    showSettingsDialogFromParent: Boolean = false,
+    onSettingsHandled: () -> Unit = {},
     viewModel: CalculatorViewModel
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -229,6 +233,13 @@ fun CalculatorScreen(
     var showVoiceDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
 
+    LaunchedEffect(showSettingsDialogFromParent) {
+        if (showSettingsDialogFromParent) {
+            showSettingsDialog = true
+            onSettingsHandled()
+        }
+    }
+
     if (showSettingsDialog) {
         AlertDialog(
             onDismissRequest = { showSettingsDialog = false },
@@ -286,43 +297,66 @@ fun CalculatorScreen(
         topBar = {
             if (!state.showHistory) {
                 TopAppBar(
-                    title = { Text("My Calculator 4906") },
+                    title = {
+                        Text(
+                            text = "My Calculator 4906", 
+                            maxLines = 1, 
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+                            softWrap = false
+                        )
+                    },
                     actions = {
-                        IconButton(onClick = { onNavigateToMathScanner() }) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = "Math Scanner")
-                        }
-                        IconButton(onClick = { viewModel.onEvent(CalculatorEvent.ToggleHistory) }) {
-                            Icon(Icons.Default.History, contentDescription = "History")
-                        }
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Menu")
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
+                        IconButton(
+                            onClick = { onOpenVoiceTutor() },
+                            modifier = Modifier.size(48.dp)
                         ) {
-                            DropdownMenuItem(
-                                text = { Text("Settings") },
-                                onClick = { showMenu = false; showSettingsDialog = true }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Advanced Features") },
-                                onClick = { showMenu = false; onNavigateToAdvancedFeatures() }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Theme Customization") },
-                                onClick = { showMenu = false; showThemeDialog = true }
-                            )
-
-                            DropdownMenuItem(
-                                text = { Text("About") },
-                                onClick = { showMenu = false; showAboutDialog = true }
-                            )
-
-                            DropdownMenuItem(
-                                text = { Text("Voice Calculator") },
-                                onClick = { showMenu = false; showVoiceDialog = true }
-                            )
+                            Icon(Icons.Default.Mic, contentDescription = "Voice AI Tutor", modifier = Modifier.size(24.dp))
+                        }
+                        IconButton(
+                            onClick = { onNavigateToMathScanner() },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(Icons.Default.CameraAlt, contentDescription = "Math Scanner", modifier = Modifier.size(24.dp))
+                        }
+                        IconButton(
+                            onClick = { viewModel.onEvent(CalculatorEvent.ToggleHistory) },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(Icons.Default.History, contentDescription = "History", modifier = Modifier.size(24.dp))
+                        }
+                        Box {
+                            IconButton(
+                                onClick = { showMenu = true },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "Menu", modifier = Modifier.size(24.dp))
+                            }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Settings") },
+                                    onClick = { showMenu = false; showSettingsDialog = true }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Voice Calculator") },
+                                    onClick = { showMenu = false; showVoiceDialog = true }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Advanced Features") },
+                                    onClick = { showMenu = false; onNavigateToAdvancedFeatures() }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Theme Customization") },
+                                    onClick = { showMenu = false; showThemeDialog = true }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("About") },
+                                    onClick = { showMenu = false; showAboutDialog = true }
+                                )
+                            }
                         }
                     }
                 )

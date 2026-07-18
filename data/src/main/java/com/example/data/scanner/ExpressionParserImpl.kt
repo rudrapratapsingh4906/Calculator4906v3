@@ -26,6 +26,9 @@ class ExpressionParserImpl(
                     "formula" -> AITutorMode.FORMULA_FIRST
                     "theorem" -> AITutorMode.THEOREM_EXPLANATION
                     "mistake" -> AITutorMode.MISTAKE_DETECTION
+                    "explain_why" -> AITutorMode.EXPLAIN_WHY
+                    "another_method" -> AITutorMode.ANOTHER_METHOD
+                    "answer_only" -> AITutorMode.ANSWER_ONLY
                     else -> AITutorMode.FULL_SOLUTION
                 }
                 return AITutorEngine.generateTutorResponse(
@@ -51,9 +54,15 @@ class ExpressionParserImpl(
             val reasoningHeader = MultiStepReasoningEngine.generateReasoning(understanding.expression, conceptInfo)
             
             val solverResult = when (understanding.intent) {
-                MathIntent.SOLVE -> solveEquation(understanding.expression)
+                MathIntent.SOLVE -> evaluateExpression(understanding.expression)
                 MathIntent.EVALUATE -> evaluateExpression(understanding.expression)
-                MathIntent.SIMPLIFY -> StepByStepSolver.simplifySteps(understanding.expression, calculatorEngine)
+                MathIntent.SIMPLIFY -> {
+                    if (understanding.extractedCommand == "factor") {
+                        StepByStepSolver.factorSteps(understanding.expression, calculatorEngine)
+                    } else {
+                        StepByStepSolver.simplifySteps(understanding.expression, calculatorEngine)
+                    }
+                }
                 MathIntent.DIFFERENTIATE -> StepByStepSolver.differentiateSteps(understanding.expression, calculatorEngine)
                 MathIntent.INTEGRATE -> StepByStepSolver.integrateSteps(understanding.expression, calculatorEngine)
                 MathIntent.MATRIX -> StepByStepSolver.matrixSteps(understanding.expression)
@@ -67,13 +76,7 @@ class ExpressionParserImpl(
                         com.example.domain.scanner.MathCategory.MATRIX -> StepByStepSolver.matrixSteps(understanding.expression)
                         com.example.domain.scanner.MathCategory.COMPLEX -> StepByStepSolver.complexSteps(understanding.expression)
                         com.example.domain.scanner.MathCategory.STATISTICS -> StepByStepSolver.statisticsSteps(understanding.expression)
-                        else -> {
-                            if (understanding.expression.contains("=")) {
-                                solveEquation(understanding.expression)
-                            } else {
-                                evaluateExpression(understanding.expression)
-                            }
-                        }
+                        else -> evaluateExpression(understanding.expression)
                     }
                 }
             }
@@ -86,9 +89,5 @@ class ExpressionParserImpl(
 
     private fun evaluateExpression(expression: String): String {
         return StepByStepSolver.evaluateSteps(expression, calculatorEngine)
-    }
-
-    private fun solveEquation(expression: String): String {
-        return StepByStepSolver.solveEquationSteps(expression, calculatorEngine)
     }
 }

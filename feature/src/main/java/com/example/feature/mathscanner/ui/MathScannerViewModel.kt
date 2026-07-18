@@ -3,15 +3,10 @@ package com.example.feature.mathscanner.ui
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.domain.math.CalculatorEngine
-import com.example.data.scanner.ExpressionParserImpl
-import com.example.data.scanner.ExpressionValidatorImpl
-import com.example.data.scanner.MathSolverRepositoryImpl
 import com.example.data.scanner.ImagePreprocessor
 import com.example.data.scanner.OCRRepositoryImpl
 import com.example.domain.scanner.PreprocessFilterMode
 import com.example.domain.scanner.OCRRepository
-import com.example.domain.scanner.SolveUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,19 +22,12 @@ data class MathScannerState(
     val capturedImage: Bitmap? = null,
     val processedImage: Bitmap? = null,
     val isCaptured: Boolean = false,
-    val isSolved: Boolean = false,
     val filterMode: PreprocessFilterMode = PreprocessFilterMode.ENHANCED_GRAY,
     val useCrop: Boolean = true
 )
 
 class MathScannerViewModel(
-    private val ocrRepository: OCRRepository = OCRRepositoryImpl(ImagePreprocessor()),
-    private val solveUseCase: SolveUseCase = SolveUseCase(
-        MathSolverRepositoryImpl(
-            ExpressionParserImpl(CalculatorEngine()), 
-            ExpressionValidatorImpl()
-        )
-    )
+    private val ocrRepository: OCRRepository = OCRRepositoryImpl(ImagePreprocessor())
 ) : ViewModel() {
     private val _state = MutableStateFlow(MathScannerState())
     val state: StateFlow<MathScannerState> = _state.asStateFlow()
@@ -126,25 +114,6 @@ class MathScannerViewModel(
         }
     }
 
-    fun solveMath(expression: String) {
-        _state.update { it.copy(isLoading = true, error = null) }
-        viewModelScope.launch {
-            try {
-                val result = withContext(Dispatchers.Default) {
-                    solveUseCase.execute(expression)
-                }
-                _state.update { it.copy(isLoading = false, result = result, isSolved = true) }
-            } catch (e: Throwable) {
-                _state.update { 
-                    it.copy(
-                        isLoading = false,
-                        error = "Solver failed: ${e.localizedMessage ?: "Check equation syntax"}"
-                    ) 
-                }
-            }
-        }
-    }
-
     fun clearResult() {
         val currentState = _state.value
         currentState.capturedImage?.let { if (!it.isRecycled) it.recycle() }
@@ -156,8 +125,7 @@ class MathScannerViewModel(
                 capturedImage = null, 
                 processedImage = null,
                 error = null, 
-                isCaptured = false, 
-                isSolved = false
+                isCaptured = false
             ) 
         }
     }

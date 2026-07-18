@@ -6,80 +6,6 @@ import kotlin.math.*
 
 object StepByStepSolver {
     
-    fun solveEquationSteps(equation: String, engine: CalculatorEngine): String {
-        val parts = equation.split("=")
-        if (parts.size != 2) return "Error: Invalid equation format"
-        
-        val left = parts[0].trim()
-        val right = parts[1].trim()
-        val variable = findVariable(equation) ?: "x"
-        
-        val steps = StringBuilder()
-        steps.append("Original Equation: $equation\n\n")
-        
-        try {
-            val leftNode = engine.parse(left)
-            val rightNode = engine.parse(right)
-            
-            steps.append("Step 1: Move all terms to one side\n")
-            val combined = SubNode(leftNode, rightNode)
-            steps.append("${combined.toSymbolic()} = 0\n\n")
-            
-            steps.append("Step 2: Simplify the expression\n")
-            val simplified = SymbolicMathEngine.simplify(combined)
-            steps.append("${simplified.toSymbolic()} = 0\n\n")
-            
-            // Try to detect quadratic
-            val f0 = simplified.eval(mapOf(variable to 0.0), false)
-            val f1 = simplified.eval(mapOf(variable to 1.0), false)
-            val fm1 = simplified.eval(mapOf(variable to -1.0), false)
-            val f2 = simplified.eval(mapOf(variable to 2.0), false)
-            
-            val c = f0
-            val a = (f1 + fm1 - 2 * c) / 2.0
-            val b = f1 - a - c
-            
-            val expectedF2 = 4 * a + 2 * b + c
-            if (abs(expectedF2 - f2) < 1e-5) {
-                // It is quadratic or linear
-                if (abs(a) > 1e-9) {
-                    steps.append("Step 3: Solve using quadratic formula\n")
-                    steps.append("a = ${formatNum(a)}, b = ${formatNum(b)}, c = ${formatNum(c)}\n")
-                    val discriminant = b * b - 4 * a * c
-                    steps.append("Δ = b² - 4ac = ${formatNum(discriminant)}\n\n")
-                    
-                    if (discriminant < 0) {
-                        steps.append("Final Answer: No real solutions")
-                    } else if (abs(discriminant) < 1e-9) {
-                        val ans = -b / (2 * a)
-                        steps.append("Final Answer: $variable = ${formatNum(ans)}")
-                    } else {
-                        val ans1 = (-b + sqrt(discriminant)) / (2 * a)
-                        val ans2 = (-b - sqrt(discriminant)) / (2 * a)
-                        steps.append("Final Answer: $variable = ${formatNum(ans1)} or $variable = ${formatNum(ans2)}")
-                    }
-                } else {
-                    steps.append("Step 3: Solve linear equation\n")
-                    if (abs(b) < 1e-9) {
-                        steps.append("Final Answer: " + (if (abs(c) < 1e-9) "Infinite solutions" else "No solution"))
-                    } else {
-                        val ans = -c / b
-                        steps.append("$variable = -(${formatNum(c)}) / ${formatNum(b)}\n\n")
-                        steps.append("Final Answer: $variable = ${formatNum(ans)}")
-                    }
-                }
-            } else {
-                steps.append("Step 3: Numerical solution (complex equation detected)\n")
-                // Fallback or placeholder
-                steps.append("Final Answer: Requires advanced symbolic solver")
-            }
-        } catch (e: Exception) {
-            steps.append("Error during symbolic processing: ${e.message}")
-        }
-        
-        return steps.toString()
-    }
-    
     fun evaluateSteps(expression: String, engine: CalculatorEngine): String {
         val steps = StringBuilder()
         steps.append("Action: Evaluate\nExpression: $expression\n\n")
@@ -264,6 +190,82 @@ object StepByStepSolver {
         if (expr.isEmpty()) return 0.0
         val res = engine.evaluate(expr, false, mapOf(variable to value))
         return if (res is Result.Success) res.data else null
+    }
+
+    fun factorSteps(expression: String, engine: CalculatorEngine): String {
+        val steps = java.lang.StringBuilder()
+        steps.append("Action: Factor Expression\nExpression: $expression\n\n")
+        val variable = findVariable(expression) ?: "x"
+        try {
+            // First try difference of squares regex: variable^2 - perfect_square
+            val cleanExpr = expression.replace(" ", "").lowercase()
+            val diffSqRegex = Regex("([a-z])\\^2-(\\d+(?:\\.\\d+)?)")
+            val matchResult = diffSqRegex.matchEntire(cleanExpr)
+            if (matchResult != null) {
+                val varName = matchResult.groupValues[1]
+                val constVal = matchResult.groupValues[2].toDouble()
+                val rootVal = Math.sqrt(constVal)
+                if (Math.abs(rootVal - Math.round(rootVal)) < 1e-9) {
+                    val rootInt = Math.round(rootVal)
+                    steps.append("Step 1: Recognize the expression as a difference of squares of the form: a² - b² = (a - b)(a + b)\n")
+                    steps.append("Here, a = $varName and b = $rootInt (since $rootInt² = $constVal)\n\n")
+                    steps.append("Step 2: Substitute into the difference of squares formula\n")
+                    steps.append("($varName - $rootInt)($varName + $rootInt)\n\n")
+                    steps.append("Final Answer: ($varName - $rootInt)($varName + $rootInt)")
+                    return steps.toString()
+                }
+            }
+
+            // Otherwise, let's try quadratic factoring: a*x^2 + b*x + c
+            // We parse the node and evaluate at points to find coefficients
+            val node = engine.parse(expression)
+            val simplified = SymbolicMathEngine.simplify(node)
+            val f0 = simplified.eval(mapOf(variable to 0.0), false)
+            val f1 = simplified.eval(mapOf(variable to 1.0), false)
+            val fm1 = simplified.eval(mapOf(variable to -1.0), false)
+            
+            val c = f0
+            val a = (f1 + fm1 - 2 * c) / 2.0
+            val b = f1 - a - c
+            
+            if (Math.abs(a) > 1e-9) {
+                steps.append("Step 1: Identify coefficients of the quadratic expression: a$variable² + b$variable + c\n")
+                steps.append("a = ${formatNum(a)}, b = ${formatNum(b)}, c = ${formatNum(c)}\n\n")
+                
+                val discriminant = b * b - 4 * a * c
+                if (discriminant < 0) {
+                    steps.append("Step 2: Check discriminant: b² - 4ac = ${formatNum(discriminant)}\n")
+                    steps.append("Since the discriminant is negative, this expression has no real linear factors.\n\n")
+                    steps.append("Final Answer: irreducible over real numbers")
+                } else {
+                    val r1 = (-b + Math.sqrt(discriminant)) / (2 * a)
+                    val r2 = (-b - Math.sqrt(discriminant)) / (2 * a)
+                    
+                    steps.append("Step 2: Find roots of the quadratic equation using the quadratic formula:\n")
+                    steps.append("Roots are: r1 = ${formatNum(r1)}, r2 = ${formatNum(r2)}\n\n")
+                    
+                    steps.append("Step 3: Write in factored form: a * ($variable - r1) * ($variable - r2)\n")
+                    
+                    val term1 = if (r1 >= 0) "$variable - ${formatNum(r1)}" else "$variable + ${formatNum(-r1)}"
+                    val term2 = if (r2 >= 0) "$variable - ${formatNum(r2)}" else "$variable + ${formatNum(-r2)}"
+                    
+                    val factorStr = if (Math.abs(a - 1.0) < 1e-9) {
+                        "($term1)($term2)"
+                    } else {
+                        "${formatNum(a)}($term1)($term2)"
+                    }
+                    
+                    steps.append("$factorStr\n\n")
+                    steps.append("Final Answer: $factorStr")
+                }
+            } else {
+                steps.append("Final Answer: Expression is linear: ${simplified.toSymbolic()}")
+            }
+        } catch (e: Exception) {
+            steps.append("Error during factoring: ${e.message}\n")
+            steps.append("Final Answer: Could not factor expression.")
+        }
+        return steps.toString()
     }
     
     private fun findVariable(equation: String): String? {

@@ -452,68 +452,6 @@ fun MathScannerScreen(
             ) {
                 Icon(Icons.Default.Camera, contentDescription = "Capture math equation", modifier = Modifier.size(42.dp))
             }
-
-            var showPracticeMenu by remember { mutableStateOf(false) }
-
-            Button(
-                onClick = { showPracticeMenu = true },
-                shape = CircleShape,
-                contentPadding = PaddingValues(16.dp),
-                modifier = Modifier.size(64.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                )
-            ) {
-                Icon(Icons.Default.School, contentDescription = "Practice Mode", modifier = Modifier.size(28.dp))
-            }
-
-            if (showPracticeMenu) {
-                Dialog(onDismissRequest = { showPracticeMenu = false }) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(0.9f).heightIn(max = 450.dp),
-                        shape = RoundedCornerShape(24.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(20.dp)) {
-                            Text("Practice Sessions", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                                Text("Chapter-wise Practice", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                listOf("Matrices", "Trigonometry", "Calculus", "Vectors", "Complex Numbers").forEach { chapter ->
-                                    Card(
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable {
-                                            viewModel.solveMath("practice chapter $chapter")
-                                            showPracticeMenu = false
-                                        },
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                                    ) {
-                                        Text(chapter, modifier = Modifier.padding(12.dp))
-                                    }
-                                }
-                                
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text("Topic-wise Practice", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                listOf("Determinants", "Integration", "Dot Product", "Standard Derivatives").forEach { topic ->
-                                    Card(
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable {
-                                            viewModel.solveMath("practice topic $topic")
-                                            showPracticeMenu = false
-                                        },
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                                    ) {
-                                        Text(topic, modifier = Modifier.padding(12.dp))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         // Loading Scrim
@@ -566,7 +504,7 @@ fun MathScannerScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = if (state.isSolved) "Scan Solution" else if (state.error != null) "Scan Error" else "Scan Result",
+                                text = if (state.error != null) "Scan Error" else "Scan Result",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.weight(1f)
@@ -680,12 +618,12 @@ fun MathScannerScreen(
                                 color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
-                        } else if (!state.isSolved) {
+                        } else {
                             TextField(
                                 value = recognizedText,
                                 onValueChange = { recognizedText = it },
                                 modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Recognized Equation") },
+                                label = { Text("Recognized Math") },
                                 colors = TextFieldDefaults.colors(
                                     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
@@ -694,68 +632,17 @@ fun MathScannerScreen(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Button(
-                                    onClick = { clipboardManager.setText(AnnotatedString(recognizedText)) },
-                                    modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                ) {
-                                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Copy Text")
-                                }
-                                
-                                Button(
-                                    onClick = { viewModel.solveMath(recognizedText) },
-                                    modifier = Modifier.weight(1.2f)
-                                ) {
-                                    Text("Solve Equation")
-                                }
-                            }
-                        } else {
-                            Text(
-                                text = "Recognized: $recognizedText",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Card(
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(modifier = Modifier.padding(14.dp)) {
-                                    Text(
-                                        text = "Result:",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Text(
-                                        text = state.result ?: "",
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                }
-                            }
-                            
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
                             Button(
-                                onClick = { clipboardManager.setText(AnnotatedString(state.result ?: "")) },
-                                modifier = Modifier.fillMaxWidth()
+                                onClick = { clipboardManager.setText(AnnotatedString(recognizedText)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
                             ) {
                                 Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Copy Result")
+                                Text("Copy Text")
                             }
                         }
                     }

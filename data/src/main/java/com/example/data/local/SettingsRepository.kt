@@ -24,6 +24,13 @@ class SettingsRepositoryImpl(context: Context) : com.example.domain.repository.S
     private val _backgroundOpacityFlow = MutableStateFlow(prefs.getFloat("background_opacity", 1.0f))
     override val backgroundOpacityFlow: StateFlow<Float> = _backgroundOpacityFlow.asStateFlow()
 
+    private val _advancedVoiceModeEnabledFlow = MutableStateFlow(prefs.getBoolean("advanced_voice_mode_enabled", false))
+    override val advancedVoiceModeEnabledFlow: StateFlow<Boolean> = _advancedVoiceModeEnabledFlow.asStateFlow()
+    private val _voiceAutoStartEnabledFlow = MutableStateFlow(prefs.getBoolean("voice_auto_start_enabled", false))
+    override val voiceAutoStartEnabledFlow: StateFlow<Boolean> = _voiceAutoStartEnabledFlow.asStateFlow()
+    private val _continuousListeningEnabledFlow = MutableStateFlow(prefs.getBoolean("continuous_listening_enabled", false))
+    override val continuousListeningEnabledFlow: StateFlow<Boolean> = _continuousListeningEnabledFlow.asStateFlow()
+
     override fun setTheme(theme: String) {
         prefs.edit().putString("theme", theme).apply()
         _themeFlow.value = theme
@@ -51,5 +58,17 @@ class SettingsRepositoryImpl(context: Context) : com.example.domain.repository.S
     override fun setBackgroundOpacity(opacity: Float) {
         prefs.edit().putFloat("background_opacity", opacity).apply()
         _backgroundOpacityFlow.value = opacity
+    }
+    override fun setAdvancedVoiceModeEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("advanced_voice_mode_enabled", enabled).apply()
+        _advancedVoiceModeEnabledFlow.value = enabled
+    }
+    override fun setVoiceAutoStartEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("voice_auto_start_enabled", enabled).apply()
+        _voiceAutoStartEnabledFlow.value = enabled
+    }
+    override fun setContinuousListeningEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("continuous_listening_enabled", enabled).apply()
+        _continuousListeningEnabledFlow.value = enabled
     }
 }
