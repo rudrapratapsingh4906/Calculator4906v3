@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -470,7 +471,7 @@ fun MathScannerScreen(
             if (showPracticeMenu) {
                 Dialog(onDismissRequest = { showPracticeMenu = false }) {
                     Card(
-                        modifier = Modifier.fillMaxWidth(0.9f).height(450.dp),
+                        modifier = Modifier.fillMaxWidth(0.9f).heightIn(max = 450.dp),
                         shape = RoundedCornerShape(24.dp)
                     ) {
                         Column(modifier = Modifier.padding(20.dp)) {

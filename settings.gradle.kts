@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "My Calculator 4906"
+rootProject.name = "JEE Graphing Calculator"
 
 include(":app", ":core", ":domain", ":data", ":feature")
