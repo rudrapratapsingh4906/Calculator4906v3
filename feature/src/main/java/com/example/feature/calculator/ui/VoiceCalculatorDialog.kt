@@ -36,6 +36,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.feature.calculator.CalculatorEvent
+import com.example.feature.calculator.CalculatorState
+import android.speech.tts.TextToSpeech
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -53,12 +55,32 @@ private const val KEY_LANGUAGE = "voice_selected_language"
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun VoiceCalculatorDialog(
+    state: CalculatorState,
     onDismissRequest: () -> Unit,
     onEvent: (CalculatorEvent) -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val sharedPrefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+    
+    var tts by remember { mutableStateOf<TextToSpeech?>(null) }
+    DisposableEffect(context) {
+        tts = TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                tts?.language = Locale.US
+            }
+        }
+        onDispose {
+            tts?.stop()
+            tts?.shutdown()
+        }
+    }
+
+    LaunchedEffect(state.result) {
+        if (state.result.isNotEmpty()) {
+            tts?.speak("The answer is ${state.result}", TextToSpeech.QUEUE_FLUSH, null, null)
+        }
+    }
 
     // Settings persisted locally
     var isContinuous by remember { mutableStateOf(sharedPrefs.getBoolean(KEY_CONTINUOUS, false)) }
@@ -248,9 +270,8 @@ fun VoiceCalculatorDialog(
                         onEvent(CalculatorEvent.Clear)
                         onEvent(CalculatorEvent.InputString(bestMathExpression))
                         
-                        if (isAutoSolve) {
-                            onEvent(CalculatorEvent.Calculate)
-                        }
+                        // Always trigger calculation
+                        onEvent(CalculatorEvent.Calculate)
 
                         // Persist to history
                         addHistoryItem(bestMatchText, bestMathExpression)

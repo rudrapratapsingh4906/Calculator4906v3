@@ -45,6 +45,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -56,6 +58,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Surface
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.ImeAction
@@ -98,6 +106,10 @@ import android.text.TextWatcher
 import android.text.Editable
 import android.util.TypedValue
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.input.key.onKeyEvent
@@ -300,6 +312,7 @@ fun CalculatorScreen(
 
     if (showVoiceDialog) {
         VoiceCalculatorDialog(
+            state = state,
             onDismissRequest = { showVoiceDialog = false },
             onEvent = viewModel::onEvent
         )
@@ -309,70 +322,113 @@ fun CalculatorScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             if (!state.showHistory) {
-                TopAppBar(
-                    title = {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.background,
+                    tonalElevation = 1.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .statusBarsPadding()
+                            .height(46.dp)
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Title area with weight to allow truncation
                         Text(
-                            text = "My Calculator 4906", 
-                            maxLines = 1, 
+                            text = "My Calculator 4906",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 12.dp),
                             softWrap = false
                         )
-                    },
-                    actions = {
-                        IconButton(
-                            onClick = { onOpenVoiceTutor() },
-                            modifier = Modifier.size(48.dp)
+                        
+                        // Actions area
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
-                            Icon(Icons.Default.Mic, contentDescription = "Voice AI Tutor", modifier = Modifier.size(24.dp))
-                        }
-                        IconButton(
-                            onClick = { onNavigateToMathScanner() },
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = "Math Scanner", modifier = Modifier.size(24.dp))
-                        }
-                        IconButton(
-                            onClick = { viewModel.onEvent(CalculatorEvent.ToggleHistory) },
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(Icons.Default.History, contentDescription = "History", modifier = Modifier.size(24.dp))
-                        }
-                        Box {
                             IconButton(
-                                onClick = { showMenu = true },
-                                modifier = Modifier.size(48.dp)
+                                onClick = { onOpenVoiceTutor() },
+                                modifier = Modifier.size(40.dp)
                             ) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "Menu", modifier = Modifier.size(24.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Mic,
+                                    contentDescription = "Voice AI Tutor",
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onBackground
+                                )
                             }
-                            DropdownMenu(
-                                expanded = showMenu,
-                                onDismissRequest = { showMenu = false }
+                            IconButton(
+                                onClick = { onNavigateToMathScanner() },
+                                modifier = Modifier.size(40.dp)
                             ) {
-                                DropdownMenuItem(
-                                    text = { Text("Settings") },
-                                    onClick = { showMenu = false; showSettingsDialog = true }
+                                Icon(
+                                    imageVector = Icons.Default.CameraAlt,
+                                    contentDescription = "Math Scanner",
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onBackground
                                 )
-                                DropdownMenuItem(
-                                    text = { Text("Voice Calculator") },
-                                    onClick = { showMenu = false; showVoiceDialog = true }
+                            }
+                            IconButton(
+                                onClick = { viewModel.onEvent(CalculatorEvent.ToggleHistory) },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.History,
+                                    contentDescription = "History",
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onBackground
                                 )
-                                DropdownMenuItem(
-                                    text = { Text("Advanced Features") },
-                                    onClick = { showMenu = false; onNavigateToAdvancedFeatures() }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Theme Customization") },
-                                    onClick = { showMenu = false; showThemeDialog = true }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("About") },
-                                    onClick = { showMenu = false; showAboutDialog = true }
-                                )
+                            }
+                            Box {
+                                IconButton(
+                                    onClick = { showMenu = true },
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "Menu",
+                                        modifier = Modifier.size(24.dp),
+                                        tint = MaterialTheme.colorScheme.onBackground
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Settings") },
+                                        onClick = { showMenu = false; showSettingsDialog = true }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Voice Calculator") },
+                                        onClick = { showMenu = false; showVoiceDialog = true }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Advanced Features") },
+                                        onClick = { showMenu = false; onNavigateToAdvancedFeatures() }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Theme Customization") },
+                                        onClick = { showMenu = false; showThemeDialog = true }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("About") },
+                                        onClick = { showMenu = false; showAboutDialog = true }
+                                    )
+                                }
                             }
                         }
                     }
-                )
+                }
             }
         }
     ) { paddingValues ->
@@ -423,6 +479,20 @@ fun CalculatorScreen(
                             onEvent = viewModel::onEvent,
                             modifier = Modifier.padding(horizontal = 8.dp)
                         )
+                        ScientificWorkspace(
+                            state = state,
+                            onEvent = viewModel::onEvent,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                            isLandscape = true
+                        )
+                    }
+                    
+                    Column(
+                        modifier = Modifier
+                            .weight(0.5f)
+                            .fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         CalculatorButtonGrid(
                             onEvent = viewModel::onEvent,
                             modifier = Modifier
@@ -431,15 +501,6 @@ fun CalculatorScreen(
                             isLandscape = true
                         )
                     }
-                    
-                    ScientificButtonGrid(
-                        onEvent = viewModel::onEvent,
-                        isDegreeMode = state.isDegreeMode,
-                        modifier = Modifier
-                            .weight(0.8f)
-                            .fillMaxHeight(),
-                        isLandscape = true
-                    )
                 }
             } else {
                 var showScientific by remember { mutableStateOf(false) }
@@ -455,6 +516,7 @@ fun CalculatorScreen(
                             .fillMaxWidth()
                             .weight(1f)
                     )
+                    
                     MemoryRow(
                         onEvent = viewModel::onEvent,
                         modifier = Modifier.padding(horizontal = 4.dp)
@@ -475,17 +537,16 @@ fun CalculatorScreen(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = if (showScientific) "Hide Scientific" else "Scientific Functions",
+                            text = if (showScientific) "Hide Scientific" else "Scientific Workspace",
                             fontSize = 13.sp
                         )
                     }
                     
                     if (showScientific) {
-                        ScientificButtonGrid(
+                        ScientificWorkspace(
+                            state = state,
                             onEvent = viewModel::onEvent,
-                            isDegreeMode = state.isDegreeMode,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
-                            isLandscape = false
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp)
                         )
                     }
                     
@@ -574,195 +635,106 @@ fun CalculatorDisplay(
     onEvent: (CalculatorEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val scrollState = rememberScrollState()
     val currentOnEvent by rememberUpdatedState(onEvent)
     val currentTextFieldValue by rememberUpdatedState(state.textFieldValue)
 
-    // Auto-scroll to the bottom when the expression updates
-    LaunchedEffect(state.currentExpression) {
-        scrollState.animateScrollTo(scrollState.maxValue)
-    }
-
     Column(
-        modifier = modifier
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.Bottom,
-        horizontalAlignment = Alignment.End
+        modifier = modifier.padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        // Expression Card
+        Card(
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (state.isDegreeMode) {
-                    Text("DEG", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), fontSize = 14.sp)
-                } else {
-                    Text("RAD", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), fontSize = 14.sp)
-                }
-                if (state.memoryValue != 0.0) {
-                    Text("M", color = MaterialTheme.colorScheme.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-            if (state.error != null) {
-                Text(
-                    text = state.error,
-                    color = MaterialTheme.colorScheme.error,
-                    fontSize = 14.sp
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // 1. Expression Area: Vertically scrollable, takes up remaining vertical space
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f) 
-                .verticalScroll(scrollState),
-            contentAlignment = Alignment.BottomEnd
-        ) {
-            val textColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f).toArgb()
-            
-            AndroidView(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                factory = { context ->
-                    val editText = object : AppCompatEditText(context) {
-                        override fun onSelectionChanged(selStart: Int, selEnd: Int) {
-                            super.onSelectionChanged(selStart, selEnd)
-                            if (selStart != currentTextFieldValue.selection.start || 
-                                selEnd != currentTextFieldValue.selection.end) {
-                                currentOnEvent(CalculatorEvent.UpdateExpression(
-                                    currentTextFieldValue.copy(selection = TextRange(selStart, selEnd))
-                                ))
-                            }
-                        }
-                    }
-                    editText.apply {
-                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                        setTextColor(textColor)
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 28f)
-                        gravity = Gravity.END or Gravity.BOTTOM
-                        inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-                        setShowSoftInputOnFocus(false) // Core requirement: Prevent Gboard
-                        setPadding(0, 0, 0, 0)
-                        isFocusableInTouchMode = true
-                        
-                        addTextChangedListener(object : TextWatcher {
-                            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-                            override fun afterTextChanged(s: Editable?) {
-                                val newText = s?.toString() ?: ""
-                                if (newText != currentTextFieldValue.text) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                contentAlignment = Alignment.BottomEnd
+            ) {
+                val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
+                
+                AndroidView(
+                    modifier = Modifier.fillMaxWidth(),
+                    factory = { context ->
+                        val editText = object : AppCompatEditText(context) {
+                            var isUpdatingFromCompose = false
+                            override fun onSelectionChanged(selStart: Int, selEnd: Int) {
+                                super.onSelectionChanged(selStart, selEnd)
+                                if (isUpdatingFromCompose) return
+                                
+                                if (selStart != currentTextFieldValue.selection.start || 
+                                    selEnd != currentTextFieldValue.selection.end) {
                                     currentOnEvent(CalculatorEvent.UpdateExpression(
-                                        currentTextFieldValue.copy(
-                                            text = newText,
-                                            selection = TextRange(selectionStart, selectionEnd)
-                                        )
+                                        currentTextFieldValue.copy(selection = TextRange(selStart, selEnd))
                                     ))
                                 }
                             }
-                        })
+                        }
+                        editText.apply {
+                            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            setTextColor(textColor)
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 24f)
+                            gravity = Gravity.END or Gravity.BOTTOM
+                            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                            setShowSoftInputOnFocus(false)
+                            setPadding(0, 0, 0, 0)
+                            isFocusableInTouchMode = true
+                            
+                            addTextChangedListener(object : TextWatcher {
+                                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                                override fun afterTextChanged(s: Editable?) {
+                                    if (isUpdatingFromCompose) return
+                                    val newText = s?.toString() ?: ""
+                                    if (newText != currentTextFieldValue.text) {
+                                        currentOnEvent(CalculatorEvent.UpdateExpression(
+                                            currentTextFieldValue.copy(
+                                                text = newText,
+                                                selection = TextRange(selectionStart, selectionEnd)
+                                            )
+                                        ))
+                                    }
+                                }
+                            })
+                        }
+                    },
+                    update = { editText ->
+                        val text = currentTextFieldValue.text
+                        val selection = currentTextFieldValue.selection
                         
-                        // Handle hardware keyboard input
-                        setOnKeyListener { _, keyCode, event ->
-                            if (event.action == NativeKeyEvent.ACTION_DOWN) {
-                                val char = when (keyCode) {
-                                    NativeKeyEvent.KEYCODE_0, NativeKeyEvent.KEYCODE_NUMPAD_0 -> '0'
-                                    NativeKeyEvent.KEYCODE_1, NativeKeyEvent.KEYCODE_NUMPAD_1 -> '1'
-                                    NativeKeyEvent.KEYCODE_2, NativeKeyEvent.KEYCODE_NUMPAD_2 -> '2'
-                                    NativeKeyEvent.KEYCODE_3, NativeKeyEvent.KEYCODE_NUMPAD_3 -> '3'
-                                    NativeKeyEvent.KEYCODE_4, NativeKeyEvent.KEYCODE_NUMPAD_4 -> '4'
-                                    NativeKeyEvent.KEYCODE_5, NativeKeyEvent.KEYCODE_NUMPAD_5 -> '5'
-                                    NativeKeyEvent.KEYCODE_6, NativeKeyEvent.KEYCODE_NUMPAD_6 -> '6'
-                                    NativeKeyEvent.KEYCODE_7, NativeKeyEvent.KEYCODE_NUMPAD_7 -> '7'
-                                    NativeKeyEvent.KEYCODE_8, NativeKeyEvent.KEYCODE_NUMPAD_8 -> '8'
-                                    NativeKeyEvent.KEYCODE_9, NativeKeyEvent.KEYCODE_NUMPAD_9 -> '9'
-                                    NativeKeyEvent.KEYCODE_PLUS, NativeKeyEvent.KEYCODE_NUMPAD_ADD -> '+'
-                                    NativeKeyEvent.KEYCODE_MINUS, NativeKeyEvent.KEYCODE_NUMPAD_SUBTRACT -> '-'
-                                    NativeKeyEvent.KEYCODE_STAR, NativeKeyEvent.KEYCODE_NUMPAD_MULTIPLY -> '×'
-                                    NativeKeyEvent.KEYCODE_SLASH, NativeKeyEvent.KEYCODE_NUMPAD_DIVIDE -> '÷'
-                                    NativeKeyEvent.KEYCODE_PERIOD, NativeKeyEvent.KEYCODE_NUMPAD_DOT -> '.'
-                                    NativeKeyEvent.KEYCODE_EQUALS -> if (event.isShiftPressed) '+' else null
-                                    else -> null
-                                }
-                                
-                                if (char != null) {
-                                    currentOnEvent(CalculatorEvent.InputChar(char))
-                                    return@setOnKeyListener true
-                                }
-                                
-                                when (keyCode) {
-                                    NativeKeyEvent.KEYCODE_DEL -> {
-                                        currentOnEvent(CalculatorEvent.DeleteLast)
-                                        true
-                                    }
-                                    NativeKeyEvent.KEYCODE_ENTER, NativeKeyEvent.KEYCODE_NUMPAD_ENTER, NativeKeyEvent.KEYCODE_EQUALS -> {
-                                        if (keyCode == NativeKeyEvent.KEYCODE_EQUALS && event.isShiftPressed) {
-                                            false
-                                        } else {
-                                            currentOnEvent(CalculatorEvent.Calculate)
-                                            true
-                                        }
-                                    }
-                                    NativeKeyEvent.KEYCODE_ESCAPE -> {
-                                        currentOnEvent(CalculatorEvent.Clear)
-                                        true
-                                    }
-                                    else -> false
-                                }
-                            } else {
-                                false
+                        if (editText.text.toString() != text || editText.selectionStart != selection.start || editText.selectionEnd != selection.end) {
+                            editText.isUpdatingFromCompose = true
+                            if (editText.text.toString() != text) {
+                                editText.setText(text)
                             }
+                            editText.setSelection(selection.start.coerceIn(0, text.length), selection.end.coerceIn(0, text.length))
+                            editText.isUpdatingFromCompose = false
                         }
                     }
-                    editText
-                },
-                update = { editText ->
-                    val text = state.textFieldValue.text
-                    val selection = state.textFieldValue.selection
-                    
-                    if (editText.text.toString() != text) {
-                        editText.setText(text)
-                        editText.setSelection(selection.start.coerceIn(0, text.length), selection.end.coerceIn(0, text.length))
-                    } else if (editText.selectionStart != selection.start || editText.selectionEnd != selection.end) {
-                        editText.setSelection(selection.start.coerceIn(0, text.length), selection.end.coerceIn(0, text.length))
-                    }
-                }
-            )
-        }
-
-        // Fixed Spacing/Separator between Expression and Result
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 2. Result Area: Fixed at the bottom of the display, never overlaps or jumps.
-        val rawResult = if (state.result.isNotEmpty()) state.result else state.liveResult
-        val resultText = if (rawResult.isNotEmpty()) "= $rawResult" else ""
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 60.dp), // Stable height to prevent jumping if empty
-            contentAlignment = Alignment.CenterEnd
-        ) {
-            if (resultText.isNotEmpty()) {
-                AutoScalableText(
-                    text = resultText,
-                    style = TextStyle(
-                        color = MaterialTheme.colorScheme.onBackground,
-                        fontSize = 54.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.End
-                    ),
-                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        // Result Card
+        Card(
+            modifier = Modifier.fillMaxWidth().height(80.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Text(
+                    text = state.result.ifEmpty { state.liveResult.ifEmpty { "0" } },
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
     }
 }
 
@@ -822,41 +794,102 @@ fun CalculatorButtonGrid(
 @Composable
 fun ScientificButton(
     symbol: String,
-    label: String,
-    tooltip: String,
     modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.surfaceVariant,
-    textColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
     onClick: () -> Unit
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier
+    Surface(
+        modifier = modifier
+            .height(40.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(color)
-            .clickable { onClick() }
-            .padding(vertical = 4.dp, horizontal = 2.dp)
-            .testTag("sci_btn_$symbol")
-            .then(modifier)
+            .clickable { onClick() },
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 2.dp
     ) {
-        Text(
-            text = symbol,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            color = textColor,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(1.dp))
-        Text(
-            text = label,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Medium,
-            color = labelColor,
-            textAlign = TextAlign.Center,
-            maxLines = 1
-        )
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = symbol,
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun CategoryChips(
+    categories: List<String>,
+    selectedIndex: Int,
+    onCategorySelected: (Int) -> Unit
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp)
+    ) {
+        itemsIndexed(categories) { index, category ->
+            FilterChip(
+                selected = index == selectedIndex,
+                onClick = { onCategorySelected(index) },
+                label = { Text(category) }
+            )
+        }
+    }
+}
+
+@Composable
+fun ScientificWorkspace(
+    state: CalculatorState,
+    onEvent: (CalculatorEvent) -> Unit,
+    modifier: Modifier = Modifier,
+    isLandscape: Boolean = false
+) {
+    var selectedCategoryIndex by remember { mutableStateOf(0) }
+    val categories = listOf("Trig", "Inv Trig", "Hyper", "Power", "Log", "Combin", "Const")
+    
+    val buttons = mapOf(
+        0 to listOf("sin" to "sin(", "cos" to "cos(", "tan" to "tan("),
+        1 to listOf("asin" to "asin(", "acos" to "acos(", "atan" to "atan("),
+        2 to listOf("sinh" to "sinh(", "cosh" to "cosh(", "tanh" to "tanh("),
+        3 to listOf("x²" to "^2", "xʸ" to "^", "√" to "√(", "∛" to "∛(", "1/x" to "1/"),
+        4 to listOf("log" to "log(", "ln" to "ln(", "exp" to "exp("),
+        5 to listOf("nPr" to "nPr", "nCr" to "nCr", "!" to "!", "mod" to "mod"),
+        6 to listOf("π" to "π", "e" to "e")
+    )
+    
+    Column(modifier = modifier.fillMaxWidth()) {
+        if (!isLandscape) {
+            CategoryChips(
+                categories = categories,
+                selectedIndex = selectedCategoryIndex,
+                onCategorySelected = { selectedCategoryIndex = it }
+            )
+        }
+        
+        val categoryButtons = buttons[selectedCategoryIndex] ?: emptyList()
+        val columns = if (isLandscape) 3 else 5
+        
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(columns),
+            modifier = Modifier.fillMaxWidth().heightIn(max = if (isLandscape) 300.dp else 200.dp),
+            contentPadding = PaddingValues(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            items(categoryButtons) { (symbol, action) ->
+                ScientificButton(
+                    symbol = symbol,
+                    onClick = { 
+                        if (symbol == "!" || symbol == "," || symbol == "(" || symbol == ")") {
+                             onEvent(CalculatorEvent.InputChar(symbol.first()))
+                        } else {
+                             onEvent(CalculatorEvent.InputString(action))
+                        }
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -867,291 +900,47 @@ fun ScientificButtonGrid(
     modifier: Modifier = Modifier,
     isLandscape: Boolean
 ) {
-    var selectedCategoryIndex by remember { mutableStateOf(0) }
+    val buttonSpacing = 4.dp
     
-    val categories = listOf(
-        "Trigonometry",
-        "Inv Trig",
-        "Hyperbolic",
-        "Powers & Roots",
-        "Logarithmic",
-        "Combinatorics",
-        "Constants"
+    val rows = listOf(
+        listOf("sin" to "sin(", "cos" to "cos(", "tan" to "tan(", "ln" to "ln(", "log" to "log("),
+        listOf("asin" to "asin(", "acos" to "acos(", "atan" to "atan(", "sinh" to "sinh(", "cosh" to "cosh("),
+        listOf("tanh" to "tanh(", "π" to "π", "e" to "e", "x²" to "^2", "xʸ" to "^"),
+        listOf("√" to "√(", "∛" to "∛(", "1/x" to "1/", "|x|" to "|", "%" to "%"),
+        listOf("nPr" to "nPr", "nCr" to "nCr", "!" to "!", "mod" to "mod"),
+        listOf("(" to "(", ")" to ")", "," to ",", "Ans" to "Ans")
     )
-
-    val categoryDescriptions = listOf(
-        "Trigonometry: Calculates sine, cosine, and tangent. Toggle DEG/RAD mode.",
-        "Inverse Trig: Calculates arcsine, arccosine, and arctangent in DEG or RAD.",
-        "Hyperbolic: Calculates hyperbolic sine, cosine, and tangent.",
-        "Powers & Roots: Square, cube, xʸ powers, and square/cube roots.",
-        "Logarithmic & Exp: Log base 10, natural log, exponential eˣ, and powers of 10.",
-        "Combinatorics: Calculate Permutations (nPr), Combinations (nCr), MOD, and Factorials.",
-        "Constants: Standard mathematical constants Pi (π) and Euler's number (e)."
-    )
-
-    var activeDescription by remember(selectedCategoryIndex) { 
-        mutableStateOf(categoryDescriptions[selectedCategoryIndex]) 
-    }
-
-    class SciBtn(
-        val symbol: String,
-        val label: String,
-        val desc: String,
-        val onClick: () -> Unit
-    )
-
-    val buttons = remember(selectedCategoryIndex, isDegreeMode) {
-        when (selectedCategoryIndex) {
-            0 -> listOf(
-                SciBtn("sin", "sine", "sin(x): Sine function.") {
-                    activeDescription = "sin(x): Sine of angle x in ${if (isDegreeMode) "degrees" else "radians"}."
-                    onEvent(CalculatorEvent.InputString("sin("))
-                },
-                SciBtn("cos", "cosine", "cos(x): Cosine function.") {
-                    activeDescription = "cos(x): Cosine of angle x in ${if (isDegreeMode) "degrees" else "radians"}."
-                    onEvent(CalculatorEvent.InputString("cos("))
-                },
-                SciBtn("tan", "tangent", "tan(x): Tangent function.") {
-                    activeDescription = "tan(x): Tangent of angle x in ${if (isDegreeMode) "degrees" else "radians"}."
-                    onEvent(CalculatorEvent.InputString("tan("))
-                },
-                SciBtn(if (isDegreeMode) "DEG" else "RAD", "angle mode", "Toggle between Degrees and Radians.") {
-                    activeDescription = "Angle mode toggled. Now using ${if (!isDegreeMode) "Degrees (DEG)" else "Radians (RAD)"}."
-                    onEvent(CalculatorEvent.ToggleAngleMode)
-                }
-            )
-            1 -> listOf(
-                SciBtn("sin⁻¹", "arcsine", "sin⁻¹(x): Inverse sine function.") {
-                    activeDescription = "sin⁻¹(x): Arcsine. Returns angle in ${if (isDegreeMode) "degrees" else "radians"}."
-                    onEvent(CalculatorEvent.InputString("sin⁻¹("))
-                },
-                SciBtn("cos⁻¹", "arccosine", "cos⁻¹(x): Inverse cosine function.") {
-                    activeDescription = "cos⁻¹(x): Arccosine. Returns angle in ${if (isDegreeMode) "degrees" else "radians"}."
-                    onEvent(CalculatorEvent.InputString("cos⁻¹("))
-                },
-                SciBtn("tan⁻¹", "arctangent", "tan⁻¹(x): Inverse tangent function.") {
-                    activeDescription = "tan⁻¹(x): Arctangent. Returns angle in ${if (isDegreeMode) "degrees" else "radians"}."
-                    onEvent(CalculatorEvent.InputString("tan⁻¹("))
-                }
-            )
-            2 -> listOf(
-                SciBtn("sinh", "sine h", "sinh(x): Hyperbolic sine function.") {
-                    activeDescription = "sinh(x): Hyperbolic sine of x."
-                    onEvent(CalculatorEvent.InputString("sinh("))
-                },
-                SciBtn("cosh", "cosine h", "cosh(x): Hyperbolic cosine function.") {
-                    activeDescription = "cosh(x): Hyperbolic cosine of x."
-                    onEvent(CalculatorEvent.InputString("cosh("))
-                },
-                SciBtn("tanh", "tangent h", "tanh(x): Hyperbolic tangent function.") {
-                    activeDescription = "tanh(x): Hyperbolic tangent of x."
-                    onEvent(CalculatorEvent.InputString("tanh("))
-                }
-            )
-            3 -> listOf(
-                SciBtn("x²", "square", "x²: Raises x to the power of 2.") {
-                    activeDescription = "x²: Calculates the square of a number."
-                    onEvent(CalculatorEvent.InputString("^2"))
-                },
-                SciBtn("x³", "cube", "x³: Raises x to the power of 3.") {
-                    activeDescription = "x³: Calculates the cube of a number."
-                    onEvent(CalculatorEvent.InputString("^3"))
-                },
-                SciBtn("xʸ", "power", "x^y: Raises base x to exponent y.") {
-                    activeDescription = "xʸ: Custom exponent power. Usage: base^exponent."
-                    onEvent(CalculatorEvent.InputChar('^'))
-                },
-                SciBtn("√", "sqrt", "√(x): Square root function.") {
-                    activeDescription = "√(x): Calculates the non-negative square root of x."
-                    onEvent(CalculatorEvent.InputString("√("))
-                },
-                SciBtn("³√", "cbrt", "³√(x): Cube root function.") {
-                    activeDescription = "³√(x): Calculates the cube root of x."
-                    onEvent(CalculatorEvent.InputString("³√("))
-                },
-                SciBtn("1/x", "reciprocal", "1/x: Multiplicative inverse.") {
-                    activeDescription = "1/x: Calculates reciprocal of a number."
-                    onEvent(CalculatorEvent.InputString("1/("))
-                }
-            )
-            4 -> listOf(
-                SciBtn("log₁₀", "log", "log(x): Base-10 common logarithm.") {
-                    activeDescription = "log(x): Base-10 logarithm of x."
-                    onEvent(CalculatorEvent.InputString("log("))
-                },
-                SciBtn("ln", "ln", "ln(x): Base-e natural logarithm.") {
-                    activeDescription = "ln(x): Natural logarithm (base e) of x."
-                    onEvent(CalculatorEvent.InputString("ln("))
-                },
-                SciBtn("eˣ", "exp", "e^x: Euler's number raised to x.") {
-                    activeDescription = "eˣ: Exponential function exp(x)."
-                    onEvent(CalculatorEvent.InputString("exp("))
-                },
-                SciBtn("10ˣ", "10^x", "10^x: 10 raised to the power of x.") {
-                    activeDescription = "10ˣ: Calculates 10 raised to power of x."
-                    onEvent(CalculatorEvent.InputString("10^("))
-                },
-                SciBtn("EXP", "sci exp", "EXP: Scientific notation multiplier *10^(") {
-                    activeDescription = "EXP: Appends scientific exponent multiplier *10^("
-                    onEvent(CalculatorEvent.InputString("*10^("))
-                }
-            )
-            5 -> listOf(
-                SciBtn("nPr", "permut", "nPr: Number of permutations.") {
-                    activeDescription = "nPr: Permutations of n items taken r at a time (e.g. 5p3)."
-                    onEvent(CalculatorEvent.InputChar('p'))
-                },
-                SciBtn("nCr", "combin", "nCr: Number of combinations.") {
-                    activeDescription = "nCr: Combinations of n items taken r at a time (e.g. 5c3)."
-                    onEvent(CalculatorEvent.InputChar('c'))
-                },
-                SciBtn("MOD", "modulo", "MOD: Remainder after division.") {
-                    activeDescription = "MOD: Modulo division (e.g. 10 mod 3 = 1)."
-                    onEvent(CalculatorEvent.InputString("mod"))
-                },
-                SciBtn("ABS", "absolute", "abs(x): Absolute value.") {
-                    activeDescription = "abs(x): Returns the absolute (positive) value of a number."
-                    onEvent(CalculatorEvent.InputString("abs("))
-                },
-                SciBtn("!", "fact", "n!: Factorial of a number.") {
-                    activeDescription = "n!: Factorial of non-negative integer n. Max n is 170."
-                    onEvent(CalculatorEvent.InputChar('!'))
-                },
-                SciBtn("Rand", "random", "rand: Random value [0, 1).") {
-                    activeDescription = "Rand: Generates a pseudo-random decimal between 0 and 1."
-                    onEvent(CalculatorEvent.InputString("rand"))
-                }
-            )
-            6 -> listOf(
-                SciBtn("π", "pi", "π: Mathematical constant Pi.") {
-                    activeDescription = "π: Pi ratio (~3.14159265)."
-                    onEvent(CalculatorEvent.InputChar('π'))
-                },
-                SciBtn("e", "euler", "e: Euler's number constant.") {
-                    activeDescription = "e: Euler's number (~2.71828182)."
-                    onEvent(CalculatorEvent.InputChar('e'))
-                }
-            )
-            else -> emptyList()
-        }
-    }
-
-    val buttonSpacing = 8.dp
-
+    
     Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp))
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(buttonSpacing)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            categories.forEachIndexed { index, name ->
-                val isSelected = index == selectedCategoryIndex
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            if (isSelected) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.surfaceVariant
-                        )
-                        .clickable { selectedCategoryIndex = index }
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
-                ) {
-                    Text(
-                        text = name,
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(6.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
-                .padding(horizontal = 6.dp, vertical = 2.dp)
-        ) {
+        rows.forEach { row ->
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = "Info",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(12.dp)
-                )
-                Text(
-                    text = activeDescription,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 10.sp,
-                    maxLines = 1,
-                    lineHeight = 12.sp
-                )
-            }
-        }
-
-        if (isLandscape) {
-            val chunkedButtons = buttons.chunked(4)
-            chunkedButtons.forEach { rowButtons ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(buttonSpacing)
-                ) {
-                    rowButtons.forEach { sciBtn ->
-                        ScientificButton(
-                            symbol = sciBtn.symbol,
-                            label = sciBtn.label,
-                            tooltip = sciBtn.desc,
-                            modifier = Modifier.weight(1f),
-                            onClick = sciBtn.onClick
-                        )
-                    }
-                    val remaining = 4 - rowButtons.size
-                    if (remaining > 0) {
-                        repeat(remaining) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
-                }
-            }
-        } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (buttons.size > 4) {
-                            Modifier.horizontalScroll(rememberScrollState())
-                        } else {
-                            Modifier
-                        }
-                    ),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(buttonSpacing)
             ) {
-                buttons.forEach { sciBtn ->
+                row.forEach { (symbol, action) ->
                     ScientificButton(
-                        symbol = sciBtn.symbol,
-                        label = sciBtn.label,
-                        tooltip = sciBtn.desc,
-                        modifier = Modifier.then(
-                            if (buttons.size > 4) {
-                                Modifier.width(80.dp)
-                            } else {
-                                Modifier.weight(1f)
+                        symbol = symbol,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            when {
+                                symbol == "%" || symbol == "!" || symbol == "(" || symbol == ")" || symbol == "," -> {
+                                    onEvent(CalculatorEvent.InputChar(symbol.first()))
+                                }
+                                symbol == "Ans" -> {
+                                    onEvent(CalculatorEvent.InputString("Ans"))
+                                }
+                                else -> {
+                                    onEvent(CalculatorEvent.InputString(action))
+                                }
                             }
-                        ),
-                        onClick = sciBtn.onClick
+                        }
                     )
+                }
+                repeat(5 - row.size) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }

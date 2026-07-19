@@ -168,26 +168,26 @@ fun MathScannerScreen(
         // Camera Viewport
         AndroidView(
             factory = { ctx ->
-                PreviewView(ctx).apply {
-                    cameraProviderFuture.addListener({
-                        val cameraProvider = cameraProviderFuture.get()
-                        val preview = Preview.Builder().build().also {
-                            it.setSurfaceProvider(surfaceProvider)
-                        }
-                        val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-                        try {
-                            cameraProvider.unbindAll()
-                            cameraProvider.bindToLifecycle(
-                                lifecycleOwner, 
-                                cameraSelector, 
-                                preview, 
-                                imageCapture
-                            )
-                        } catch (e: Exception) {
-                            android.util.Log.e("MathScanner", "Error binding camera lifecycle: ${e.message}")
-                        }
-                    }, ContextCompat.getMainExecutor(ctx))
-                }
+                val previewView = PreviewView(ctx)
+                cameraProviderFuture.addListener({
+                    val cameraProvider = cameraProviderFuture.get()
+                    val preview = Preview.Builder().build().also {
+                        it.setSurfaceProvider(previewView.surfaceProvider)
+                    }
+                    val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                    try {
+                        cameraProvider.unbindAll()
+                        cameraProvider.bindToLifecycle(
+                            lifecycleOwner, 
+                            cameraSelector, 
+                            preview, 
+                            imageCapture
+                        )
+                    } catch (e: Exception) {
+                        android.util.Log.e("MathScanner", "Error binding camera lifecycle: ${e.message}")
+                    }
+                }, ContextCompat.getMainExecutor(ctx))
+                previewView
             },
             modifier = Modifier.fillMaxSize()
         )
